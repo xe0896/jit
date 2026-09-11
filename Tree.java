@@ -2,6 +2,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 
 public class Tree extends GitObject {
@@ -27,25 +28,30 @@ public class Tree extends GitObject {
     }
 
     public static Tree parseContent(byte[] payload) {
-        int cursor = 0;
+        // <mode>' '<name>0<hash>
+        // initial split would be:
+        // list[0] = <mode>
+        // list[1] = <name>0<hash>...
+
         List<TreeEntry> e = new ArrayList<>();
+        int cursor = 0;
+        byte[] source = payload;
+
         while(cursor < payload.length) {
-            int whitespace = 0;
-            int i = cursor;
-            for(;i < payload.length; i++) {
-                if(payload[i] == ' ') whitespace = i;
-                if(payload[i] == 0) break;
-            }
+            Deque<byte[]> list1 = GitObject.split(source, (byte)' ', 0, 1);
+            byte[] _mode = list1.poll();
+            Deque<byte[]> list2 = GitObject.split(list1.poll(), (byte)0, 0, 1);
+            byte[] _name = list2.poll();
+            byte[] hash = Arrays.copyOfRange(list2.poll(), 0, HASH_LENGTH);
 
-            byte[] _mode = Arrays.copyOfRange(payload, cursor, whitespace);
-            byte[] _name = Arrays.copyOfRange(payload, whitespace + 1, i);
-            byte[] hash = Arrays.copyOfRange(payload, i+1, GitObject.HASH_LENGTH);
+            int mode = Integer.parseInt(new String(_mode, GitObject.ascii), 8);
+            String name = new String(_name, GitObject.utf);
 
-            int mode = Integer.parseInt(new String(_mode, GitObject.ascii));
-            String name = new String(_name, GitObject.ascii);
+            int jump = _mode.length + 1 + _name.length + 1 + HASH_LENGTH;
+            cursor += jump;
+            source = Arrays.copyOfRange(source, jump, source.length);
 
             e.add(new TreeEntry(hash, mode, name));
-            cursor += i + GitObject.HASH_LENGTH + 1;  
         }
 
         return new Tree(e);

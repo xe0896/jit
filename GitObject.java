@@ -5,10 +5,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Blob;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
 
 public abstract class GitObject {
     public static final Charset ascii = StandardCharsets.US_ASCII;
+    public static final Charset utf = StandardCharsets.UTF_8;
     public static final int HASH_LENGTH = 20;
 
     abstract String type();
@@ -30,6 +35,29 @@ public abstract class GitObject {
         out.write(content);
 
         return out.toByteArray();
+    }
+
+    public static Deque<byte[]> split(byte[] source, byte delimiter, int from, int limit) {
+        Deque<byte[]> list = new ArrayDeque<>();
+        int prev = from;
+
+        for(int i = from; i < source.length && limit != 0; i++) {
+            // Whenever we find the delimiter we take that byte subarray
+            // and append to the list and decrement limit until we have
+            // reached the limit or we cannot go further into the source
+
+            if(source[i] == delimiter) {
+                list.offer(Arrays.copyOfRange(source, prev, i));
+                if(limit > 0) limit--;
+                prev = i + 1;
+            }
+        }
+
+        if(limit != 0 && prev < source.length) {
+            list.poll(Arrays.copyOfRange(source, prev, source.length));
+        }
+
+        return list;
     }
 
     public static GitObject deserialise(byte[] envelope) {
