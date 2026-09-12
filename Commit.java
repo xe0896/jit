@@ -1,5 +1,8 @@
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,6 +38,7 @@ public class Commit extends GitObject {
     @Override 
     public byte[] serialiseContent() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
+        DataOutputStream outPrim = new DataOutputStream(out);
         
         out.write(author.name().getBytes(GitObject.utf));
         out.write(0);
@@ -46,13 +50,14 @@ public class Commit extends GitObject {
         out.write(0);
         out.write(message.getBytes(GitObject.utf));
         out.write(0);
-        out.write(Long.toString(author.time().getEpochSecond()).getBytes(GitObject.ascii));
-        out.write(Long.toString(committer.time().getEpochSecond()).getBytes(GitObject.ascii));
+        outPrim.writeLong(author.time().getEpochSecond());
+        outPrim.writeLong(committer.time().getEpochSecond());
         out.write(treeHash);
-        out.write(Integer.toString(parentHashes.size()).getBytes(GitObject.ascii));
+        outPrim.writeInt(parentHashes.size());
+        out.write(0);
 
-        for(byte[] parentHash : parentHashes) {
-            out.write(Integer.toString(parentHash.length).getBytes(GitObject.ascii));
+        for(int i = 0; i < parentHashes.size(); i++) {
+            byte[] parentHash = parentHashes.get(i);   
             out.write(parentHash);
         }
 
@@ -60,8 +65,11 @@ public class Commit extends GitObject {
     }
 
     public static Commit parseContent(byte[] content) {
-        // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]<list of parent hashes>
+        // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]0<list of parent hashes>
         // use +20 bytes to read the next hash
+
+        // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
+        // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
         Deque<byte[]> list = GitObject.split(content, (byte)0, 0, 5);
 
@@ -71,37 +79,34 @@ public class Commit extends GitObject {
         byte[] _cemail = list.poll();
         byte[] _message = list.poll();
 
+        byte[] timeHashLength = list.poll();
+        byte[] _parentHashes = list.poll();
+
+        byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
+        byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2*Long.BYTES);
+
         String authorName = new String(_aname, GitObject.utf);
         String authorEmail = new String(_aemail, GitObject.utf);
-        String committerName = new String(_cname, GitObject.utf);
+        String committerName = new String(_cname, GitObject.utf)
         String committerEmail = new String(_cemail, GitObject.utf);
         String message = new String(_message, GitObject.utf);
 
-        byte[] rest = list.poll();
-        
-        String authorTimeStr = new String(Arrays.copyOfRange(rest, 0, Long.BYTES), GitObject.utf);
-        String committerTimeStr = new String(Arrays.copyOfRange(rest, Long.BYTES, 2*Long.BYTES), GitObject.utf);
-
-        Instant authorTime = Instant.ofEpochSecond(Long.parseLong(authorTimeStr));
-        Instant committerTime = Instant.ofEpochSecond(Long.parseLong(committerTimeStr));
+        Instant authorTime = Instant.ofEpochSecond(ByteBuffer.wrap(_authorTime).getLong());
+        Instant committerTime = Instant.ofEpochSecond(ByteBuffer.wrap(_committerTime).getLong());
 
         Author author = new Author(authorName, authorEmail, authorTime);
         Committer committer = new Committer(committerName, committerEmail, committerTime);
 
-        int hashIdx = 2*Long.BYTES;
+        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES, 2*Long.BYTES + GitObject.HASH_LENGTH);
+        byte[] _length = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES + GitObject.HASH_LENGTH, timeHashLength.length);
 
-        byte[] treeHash = Arrays.copyOfRange(rest, hashIdx, hashIdx + GitObject.HASH_LENGTH);
+        int length = ByteBuffer.wrap(_length).getInt();
 
-        int lengthIdx = hashIdx + GitObject.HASH_LENGTH;
-
-        int size = Integer.parseInt(new String(Arrays.copyOfRange(rest, lengthIdx, lengthIdx + Integer.BYTES)));
-
-        int parentIdx = lengthIdx + Integer.BYTES;
-
+        int parentIdx = 0;
         List<byte[]> parentHashes = new ArrayList<>();
 
-        for(int i = 0; i < size; i++) {
-            byte[] parentHash = Arrays.copyOfRange(content, parentIdx, parentIdx + GitObject.HASH_LENGTH);
+        for(int i = 0; i < length; i++) {            
+            byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + GitObject.HASH_LENGTH);
             parentHashes.add(parentHash);
             parentIdx += GitObject.HASH_LENGTH;
         }

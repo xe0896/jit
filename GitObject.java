@@ -54,7 +54,7 @@ public abstract class GitObject {
         }
 
         if(limit != 0 && prev < source.length) {
-            list.poll(Arrays.copyOfRange(source, prev, source.length));
+            list.offer(Arrays.copyOfRange(source, prev, source.length));
         }
 
         return list;
