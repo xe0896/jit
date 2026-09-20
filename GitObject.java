@@ -15,11 +15,15 @@ public abstract class GitObject {
     public static final Charset ascii = StandardCharsets.US_ASCII;
     public static final Charset utf = StandardCharsets.UTF_8;
     public static final int HASH_LENGTH = 20;
-
+    
     abstract String type();
     abstract byte[] serialiseContent() throws IOException;
 
-    // Creates the envelope of the content as well as the type
+    /** 
+     * Creates the envelope of the content as well as the type
+     * @return byte[]
+     * @throws IOException
+     */
     public byte[] serialise() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] content = serialiseContent();
@@ -37,8 +41,19 @@ public abstract class GitObject {
         return out.toByteArray();
     }
 
+    /** 
+     * Given an array of bytes that has some delimiters, split the bytes given the delimiter
+     * and also where to start from as well as how many, limit-- is done as the amount of
+     * delimiters n would suggest the limit would be n - 1
+     * @param source
+     * @param delimiter
+     * @param from
+     * @param limit
+     * @return Deque<byte[]>
+     */
     public static Deque<byte[]> split(byte[] source, byte delimiter, int from, int limit) {
         Deque<byte[]> list = new ArrayDeque<>();
+        limit--; // Temporary
         int prev = from;
 
         for(int i = from; i < source.length && limit != 0; i++) {
@@ -60,6 +75,12 @@ public abstract class GitObject {
         return list;
     }
 
+    /** 
+     * Inverse of serialise; serialise would of declared the type first so we use that to extract it
+     * and depending on the type we call the appropriate parse function
+     * @param envelope
+     * @return GitObject
+     */
     public static GitObject deserialise(byte[] envelope) {
         int i = 0;
         int whitespace = 0;
@@ -82,6 +103,12 @@ public abstract class GitObject {
         }
     }
 
+    /** 
+     * Calls the serialise function for the object and creates a hash via SHA-1
+     * @return byte[]
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     */
     public byte[] hash() throws IOException, NoSuchAlgorithmException {
         // The hash will be applied to the envelope, not the content itself as
         // two blobs could have the same hash if we was to just feed the content

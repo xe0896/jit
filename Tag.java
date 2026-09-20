@@ -21,11 +21,18 @@ public class Tag extends GitObject {
         this.message = message;
     }
 
+    /** 
+     * @return String
+     */
     @Override 
     public String type() {
         return TYPE;
     }
 
+    /** 
+     * @return byte[]
+     * @throws IOException
+     */
     @Override 
     public byte[] serialiseContent() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -46,6 +53,10 @@ public class Tag extends GitObject {
         return out.toByteArray();
     }
     
+    /** 
+     * @param content
+     * @return Tag
+     */
     public static Tag parseContent(byte[] content) {
         // <targetType>0<tagName>0<taggerName>0<taggerEmail>0<message>0<time><targetHash>
         Deque<byte[]> queue = GitObject.split(content, (byte)0, 0, 5);

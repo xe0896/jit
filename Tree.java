@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
+// A tree is another way to say folder, that can point to a blob or another tree
 public class Tree extends GitObject {
     private static final String TYPE = "tree";
     private final List<TreeEntry> entries;

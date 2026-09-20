@@ -27,7 +27,7 @@ public class ObjectStore {
         return hash;
     }
 
-    public Optional<byte[]> load(byte[] hash) {
+    public Optional<byte[]> load(byte[] hash) throws IOException {
         String hex = HexFormat.of().formatHex(hash);
 
         String dirName = hex.substring(0, 2);
@@ -36,6 +36,6 @@ public class ObjectStore {
 
         if(!Files.exists(path)) return Optional.empty();
 
-        return Optional.of(Files.readAllBytes(path))
+        return Optional.of(Files.readAllBytes(path));
     }
 }

@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
+// A snapshot pointer of the root tree, we use the hash so avoid
+// duplication as well as save memory
 public class Commit extends GitObject {
     private static final String TYPE = "commit";
 
