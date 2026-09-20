@@ -1,3 +1,4 @@
+package objects;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -5,6 +6,8 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Deque;
+
+import entities.Tagger;
 
 public class Tag extends GitObject {
     private static final String TYPE = "tag";
@@ -36,7 +39,7 @@ public class Tag extends GitObject {
     @Override 
     public byte[] serialiseContent() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        DataOutputStream outPrim = new DataOutputStream(out)
+        DataOutputStream outPrim = new DataOutputStream(out);
 
         out.write(tagger.targetType().getBytes(GitObject.ascii));
         out.write(0);

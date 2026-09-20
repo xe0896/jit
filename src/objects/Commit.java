@@ -1,3 +1,5 @@
+package objects;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
@@ -9,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+
+import entities.*;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
 // duplication as well as save memory
@@ -89,7 +93,7 @@ public class Commit extends GitObject {
 
         String authorName = new String(_aname, GitObject.utf);
         String authorEmail = new String(_aemail, GitObject.utf);
-        String committerName = new String(_cname, GitObject.utf)
+        String committerName = new String(_cname, GitObject.utf);
         String committerEmail = new String(_cemail, GitObject.utf);
         String message = new String(_message, GitObject.utf);
 

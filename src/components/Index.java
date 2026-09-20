@@ -1,3 +1,4 @@
+package components;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,6 +10,8 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+
+import objects.GitObject;
 
 public class Index {
     private ObjectStore objectStore;
@@ -133,4 +136,6 @@ public class Index {
 
         return root;
     }
+
+    private record IndexEntry(String path, byte[] hash, int mode) {}
 }

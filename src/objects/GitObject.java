@@ -1,10 +1,10 @@
+package objects;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Blob;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -95,7 +95,7 @@ public abstract class GitObject {
         byte[] content = Arrays.copyOfRange(envelope, i+1, envelope.length);
         
         switch(typeStr) {
-            case "blob" -> {return Blob.parseContent(content);}
+            case "blob" -> {return Bloob.parseContent(content);}
             case "tree" -> {return Tree.parseContent(content);}
             case "commit" -> {return Commit.parseContent(content);}
             case "tag" -> {return Tag.parseContent(content);}
