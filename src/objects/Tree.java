@@ -7,7 +7,7 @@ import java.util.Deque;
 import java.util.List;
 
 // A tree is another way to say folder, that can point to a blob or another tree
-public class Tree extends GitObject {
+public class Tree extends JitObject {
     private static final String TYPE = "tree";
     private final List<TreeEntry> entries;
 
@@ -40,14 +40,14 @@ public class Tree extends GitObject {
         byte[] source = payload;
 
         while(cursor < payload.length) {
-            Deque<byte[]> list1 = GitObject.split(source, (byte)' ', 0, 1);
+            Deque<byte[]> list1 = JitObject.split(source, (byte)' ', 0, 1);
             byte[] _mode = list1.poll();
-            Deque<byte[]> list2 = GitObject.split(list1.poll(), (byte)0, 0, 1);
+            Deque<byte[]> list2 = JitObject.split(list1.poll(), (byte)0, 0, 1);
             byte[] _name = list2.poll();
             byte[] hash = Arrays.copyOfRange(list2.poll(), 0, HASH_LENGTH);
 
-            int mode = Integer.parseInt(new String(_mode, GitObject.ascii), 8);
-            String name = new String(_name, GitObject.utf);
+            int mode = Integer.parseInt(new String(_mode, JitObject.ascii), 8);
+            String name = new String(_name, JitObject.utf);
 
             int jump = _mode.length + 1 + _name.length + 1 + HASH_LENGTH;
             cursor += jump;
@@ -67,9 +67,9 @@ public class Tree extends GitObject {
          * @throws IOException
          */
         public void writeTo(ByteArrayOutputStream out) throws IOException {
-            out.write(Integer.toOctalString(mode).getBytes(GitObject.ascii));
+            out.write(Integer.toOctalString(mode).getBytes(JitObject.ascii));
             out.write(' ');
-            out.write(name.getBytes(GitObject.ascii));
+            out.write(name.getBytes(JitObject.ascii));
             out.write(0);
             out.write(hash);
         }

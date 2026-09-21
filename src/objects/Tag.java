@@ -9,7 +9,7 @@ import java.util.Deque;
 
 import entities.Tagger;
 
-public class Tag extends GitObject {
+public class Tag extends JitObject {
     private static final String TYPE = "tag";
 
     public byte[] targetHash;
@@ -41,15 +41,15 @@ public class Tag extends GitObject {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream outPrim = new DataOutputStream(out);
 
-        out.write(tagger.targetType().getBytes(GitObject.ascii));
+        out.write(tagger.targetType().getBytes(JitObject.ascii));
         out.write(0);
-        out.write(tagger.tagName().getBytes(GitObject.ascii));
+        out.write(tagger.tagName().getBytes(JitObject.ascii));
         out.write(0);
-        out.write(tagger.taggerName().getBytes(GitObject.ascii));
+        out.write(tagger.taggerName().getBytes(JitObject.ascii));
         out.write(0);
-        out.write(tagger.taggerEmail().getBytes(GitObject.ascii));
+        out.write(tagger.taggerEmail().getBytes(JitObject.ascii));
         out.write(0);
-        out.write(message.getBytes(GitObject.ascii));
+        out.write(message.getBytes(JitObject.ascii));
         outPrim.writeLong(taggerTime.getEpochSecond());
         out.write(targetHash);
 
@@ -62,7 +62,7 @@ public class Tag extends GitObject {
      */
     public static Tag parseContent(byte[] content) {
         // <targetType>0<tagName>0<taggerName>0<taggerEmail>0<message>0<time><targetHash>
-        Deque<byte[]> queue = GitObject.split(content, (byte)0, 0, 5);
+        Deque<byte[]> queue = JitObject.split(content, (byte)0, 0, 5);
 
         byte[] _targetType = queue.poll();
         byte[] _tagName = queue.poll();
@@ -70,16 +70,16 @@ public class Tag extends GitObject {
         byte[] _taggerEmail = queue.poll();
         byte[] _message = queue.poll();
         
-        String targetType = new String(_targetType, GitObject.ascii);
-        String tagName = new String(_tagName, GitObject.utf);
-        String taggerName = new String(_taggerName, GitObject.utf);
-        String taggerEmail = new String(_taggerEmail, GitObject.utf);
-        String message = new String(_message, GitObject.utf);
+        String targetType = new String(_targetType, JitObject.ascii);
+        String tagName = new String(_tagName, JitObject.utf);
+        String taggerName = new String(_taggerName, JitObject.utf);
+        String taggerEmail = new String(_taggerEmail, JitObject.utf);
+        String message = new String(_message, JitObject.utf);
 
         byte[] timeAndHash = queue.poll();
 
         byte[] _time = Arrays.copyOfRange(timeAndHash, 0, Long.BYTES);
-        byte[] targetHash = Arrays.copyOfRange(timeAndHash, Long.BYTES, Long.BYTES + GitObject.HASH_LENGTH);
+        byte[] targetHash = Arrays.copyOfRange(timeAndHash, Long.BYTES, Long.BYTES + JitObject.HASH_LENGTH);
 
         Instant time = Instant.ofEpochSecond(ByteBuffer.wrap(_time).getLong());
 

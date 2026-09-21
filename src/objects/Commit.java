@@ -16,7 +16,7 @@ import entities.*;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
 // duplication as well as save memory
-public class Commit extends GitObject {
+public class Commit extends JitObject {
     private static final String TYPE = "commit";
 
     private byte[] treeHash; // Points to the root tree
@@ -46,15 +46,15 @@ public class Commit extends GitObject {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream outPrim = new DataOutputStream(out);
         
-        out.write(author.name().getBytes(GitObject.utf));
+        out.write(author.name().getBytes(JitObject.utf));
         out.write(0);
-        out.write(author.email().getBytes(GitObject.utf));
+        out.write(author.email().getBytes(JitObject.utf));
         out.write(0);
-        out.write(committer.name().getBytes(GitObject.utf));
+        out.write(committer.name().getBytes(JitObject.utf));
         out.write(0);
-        out.write(committer.email().getBytes(GitObject.utf));
+        out.write(committer.email().getBytes(JitObject.utf));
         out.write(0);
-        out.write(message.getBytes(GitObject.utf));
+        out.write(message.getBytes(JitObject.utf));
         out.write(0);
         outPrim.writeLong(author.time().getEpochSecond());
         outPrim.writeLong(committer.time().getEpochSecond());
@@ -77,7 +77,7 @@ public class Commit extends GitObject {
         // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
         // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
-        Deque<byte[]> list = GitObject.split(content, (byte)0, 0, 5);
+        Deque<byte[]> list = JitObject.split(content, (byte)0, 0, 5);
 
         byte[] _aname = list.poll();
         byte[] _aemail = list.poll();
@@ -91,11 +91,11 @@ public class Commit extends GitObject {
         byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
         byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2*Long.BYTES);
 
-        String authorName = new String(_aname, GitObject.utf);
-        String authorEmail = new String(_aemail, GitObject.utf);
-        String committerName = new String(_cname, GitObject.utf);
-        String committerEmail = new String(_cemail, GitObject.utf);
-        String message = new String(_message, GitObject.utf);
+        String authorName = new String(_aname, JitObject.utf);
+        String authorEmail = new String(_aemail, JitObject.utf);
+        String committerName = new String(_cname, JitObject.utf);
+        String committerEmail = new String(_cemail, JitObject.utf);
+        String message = new String(_message, JitObject.utf);
 
         Instant authorTime = Instant.ofEpochSecond(ByteBuffer.wrap(_authorTime).getLong());
         Instant committerTime = Instant.ofEpochSecond(ByteBuffer.wrap(_committerTime).getLong());
@@ -103,8 +103,8 @@ public class Commit extends GitObject {
         Author author = new Author(authorName, authorEmail, authorTime);
         Committer committer = new Committer(committerName, committerEmail, committerTime);
 
-        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES, 2*Long.BYTES + GitObject.HASH_LENGTH);
-        byte[] _length = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES + GitObject.HASH_LENGTH, timeHashLength.length);
+        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES, 2*Long.BYTES + JitObject.HASH_LENGTH);
+        byte[] _length = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES + JitObject.HASH_LENGTH, timeHashLength.length);
 
         int length = ByteBuffer.wrap(_length).getInt();
 
@@ -112,9 +112,9 @@ public class Commit extends GitObject {
         List<byte[]> parentHashes = new ArrayList<>();
 
         for(int i = 0; i < length; i++) {            
-            byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + GitObject.HASH_LENGTH);
+            byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + JitObject.HASH_LENGTH);
             parentHashes.add(parentHash);
-            parentIdx += GitObject.HASH_LENGTH;
+            parentIdx += JitObject.HASH_LENGTH;
         }
 
         return new Commit(treeHash, parentHashes, committer, author, message);

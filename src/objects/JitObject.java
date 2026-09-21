@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
-public abstract class GitObject {
+public abstract class JitObject {
     public static final Charset ascii = StandardCharsets.US_ASCII;
     public static final Charset utf = StandardCharsets.UTF_8;
     public static final int HASH_LENGTH = 20;
@@ -79,9 +79,9 @@ public abstract class GitObject {
      * Inverse of serialise; serialise would of declared the type first so we use that to extract it
      * and depending on the type we call the appropriate parse function
      * @param envelope
-     * @return GitObject
+     * @return JitObject
      */
-    public static GitObject deserialise(byte[] envelope) {
+    public static JitObject deserialise(byte[] envelope) {
         int i = 0;
         int whitespace = 0;
         for(;i < envelope.length; i++) {

@@ -11,11 +11,13 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
-import objects.GitObject;
+import objects.JitObject;
 
 public class Index {
     private ObjectStore objectStore;
     public Map<String, IndexEntry> entries;
+
+    public static final Path INDEX_PATH = Path.of(".jit/index");
 
     public Index(ObjectStore objectStore) {
         this.objectStore = objectStore;
@@ -47,7 +49,7 @@ public class Index {
     /** 
      * After the user has done git add to all the relevant files, then
      * this would be called when we commit which takes all the added files
-     * and write this into the .git/index
+     * and write this into the .jit/index
      * @throws IOException
      */
     public void write() throws IOException {
@@ -62,8 +64,7 @@ public class Index {
             lines.add(res);
 
         }
-        Path file = Paths.get(".git/index");
-        Files.write(file, lines);
+        Files.write(INDEX_PATH, lines);
     }
 
     /** 
@@ -71,9 +72,8 @@ public class Index {
      */
     public void read() throws IOException {
         // <mode> <hex> <path>\n
-        Path file = Paths.get(".git/index");
 
-        for(String line : Files.readAllLines(file)) {
+        for(String line : Files.readAllLines(INDEX_PATH)) {
             String[] parts = line.split(" ", 3);
             String _mode = parts[0];
             String _hex = parts[1];
@@ -119,13 +119,13 @@ public class Index {
                 
                 String path = entry.path();
 
-                out.write(dir.getBytes(GitObject.ascii));
+                out.write(dir.getBytes(JitObject.ascii));
                 out.write(' ');
 
                 int idx = path.lastIndexOf("/");
                 String name = path.substring(idx + 1, path.length());
 
-                out.write(name.getBytes(GitObject.ascii));
+                out.write(name.getBytes(JitObject.ascii));
                 out.write(0);
                 out.write(entry.hash());
             }

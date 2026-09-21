@@ -9,6 +9,8 @@ import java.util.HexFormat;
 import java.util.Optional;
 
 public class ObjectStore {
+    public static final Path OBJECT_PATH = Path.of(".jit/objects");
+
     public byte[] store(byte[] content) throws NoSuchAlgorithmException, IOException {
         MessageDigest md = MessageDigest.getInstance("SHA-1");
         
@@ -18,7 +20,7 @@ public class ObjectStore {
 
         String dirName = hex.substring(0, 2);
 
-        Path dir = Paths.get(".git/objects", dirName);
+        Path dir = OBJECT_PATH.resolve(dirName);
         
         Files.createDirectories(dir);
         Path file = dir.resolve(hex.substring(2));
@@ -33,7 +35,7 @@ public class ObjectStore {
 
         String dirName = hex.substring(0, 2);
         
-        Path path = Paths.get(".git/objects", dirName, hex.substring(2));
+        Path path = OBJECT_PATH.resolve(dirName + hex.substring(2));
 
         if(!Files.exists(path)) return Optional.empty();
 
