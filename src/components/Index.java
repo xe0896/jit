@@ -2,6 +2,7 @@ package components;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
@@ -26,16 +27,15 @@ public class Index {
 
     /** 
      * The idea behind the index is when we edit a file/blob then we need to
-     * git add the file so that we can commit later on, 
+     * jit add the file so that we can commit later on, 
      * @param path
      * @throws IOException
      * @throws NoSuchAlgorithmException
      */
-    public void add(String path) throws IOException, NoSuchAlgorithmException {
+    public void add(String path) throws IOException, NoSuchAlgorithmException, NoSuchFileException {
         // A given path would be like src/main.c
         byte[] bytes = Files.readAllBytes(Path.of(path));
         byte[] hash = objectStore.store(bytes);
-
         entries.put(path, new IndexEntry(path, hash, 0100644));
     }
 
@@ -62,8 +62,8 @@ public class Index {
             String res = idx.mode() + " " + hex + " " + path;
 
             lines.add(res);
-
         }
+        
         Files.write(INDEX_PATH, lines);
     }
 
@@ -88,7 +88,9 @@ public class Index {
     }
 
     /** 
-     * @return byte[]
+     * Builds the tree hierarchy represented by the current index. 
+     * 
+     * @return byte[] hash of the root tree reprsenting the staged snapshot
      * @throws IOException
      * @throws NoSuchAlgorithmException
      */
@@ -137,5 +139,5 @@ public class Index {
         return root;
     }
 
-    private record IndexEntry(String path, byte[] hash, int mode) {}
+    public record IndexEntry(String path, byte[] hash, int mode) {}
 }

@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 // A tree is another way to say folder, that can point to a blob or another tree
 public class Tree extends JitObject {
@@ -27,6 +29,15 @@ public class Tree extends JitObject {
             entry.writeTo(out);
         }
         return out.toByteArray();
+    }
+
+    public static Map<String, byte[]> flattenTree(Tree tree) {
+        Map<String, byte[]> map = new HashMap<>();
+
+        for(TreeEntry entry : tree.entries) {
+            map.put(entry.name(), entry.hash());
+        }
+        return map;
     }
 
     public static Tree parseContent(byte[] payload) {

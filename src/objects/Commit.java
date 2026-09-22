@@ -19,7 +19,7 @@ import entities.*;
 public class Commit extends JitObject {
     private static final String TYPE = "commit";
 
-    private byte[] treeHash; // Points to the root tree
+    public byte[] treeHash; // Points to the root tree
     private List<byte[]> parentHashes; // Zero or more parents
     private final static int DELIMITERS = 5;
 

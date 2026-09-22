@@ -8,6 +8,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
 
+import objects.JitObject;
+
 public class ObjectStore {
     public static final Path OBJECT_PATH = Path.of(".jit/objects");
 
@@ -30,15 +32,21 @@ public class ObjectStore {
         return hash;
     }
 
-    public Optional<byte[]> load(byte[] hash) throws IOException {
+    public Optional<JitObject> load(byte[] hash) throws IOException {
         String hex = HexFormat.of().formatHex(hash);
 
         String dirName = hex.substring(0, 2);
+        String fileName = hex.substring(2);
         
-        Path path = OBJECT_PATH.resolve(dirName + hex.substring(2));
+        // ab/eo234j2io4j2o4j23, ab is the dirName the file is the fileName
+        Path path = OBJECT_PATH.resolve(dirName).resolve(fileName);
 
         if(!Files.exists(path)) return Optional.empty();
 
-        return Optional.of(Files.readAllBytes(path));
+        byte[] bytes = Files.readAllBytes(path);
+
+        JitObject object = JitObject.deserialise(hash);
+
+        return Optional.of(object);
     }
 }
