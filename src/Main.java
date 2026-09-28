@@ -27,6 +27,7 @@ public class Main {
     private static final String ADD = "add";
     private static final String STATUS = "status";
     private static final String PULL = "pull";
+    private static final String COMMIT = "commit";
 
     public static final Path JIT = Path.of(".jit");
 
@@ -49,11 +50,25 @@ public class Main {
                 }
                 case STATUS -> status();
                 case PULL -> pull();
+                case COMMIT -> {
+                    if (args.length != 3)
+                        EXIT_FAILURE("jit status expects atleast 2 arguments (jit status <mode> 'message')");
+
+                    if (!args[1].equals("-m"))
+                        EXIT_FAILURE("Only mode allowed is '-m'");
+
+                    commit(args[2]);
+                }
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void commit(String message) {
+        // When we commit that would make the HEAD point to this new commit, we need to take a snapshot
+        // of the current index
     }
 
     public static void pull() {
@@ -121,6 +136,9 @@ public class Main {
             Path _path = Path.of(stringHead.substring(5));
             // path=refs/heads/master
 
+            if (!Files.exists(_path))
+                EXIT_FAILURE("No 'master' file, commit atleast once before 'jit status'");
+
             // Reads the hash stored in the master file that was pointed to
             // by HEAD then uses that hash to go into objects and find
             // the object stored there, it would be a commit as this master
@@ -152,10 +170,6 @@ public class Main {
         index.read();
         Map<String, IndexEntry> indexMap = index.entries;
 
-        Set<String> headSet = treeMap.keySet();
-        Set<String> indexSet = indexMap.keySet();
-        Set<String> workingSet = workingMap.keySet();
-
         List<Status> staged = new ArrayList<>();
         List<Status> unstaged = new ArrayList<>();
 
@@ -163,11 +177,11 @@ public class Main {
         // Unstaged changes: compares index with working, (modified, deleted)
         // Untracked changes: files that are in working but not in index (new files)
 
-        Set<String> headAndIndex = new HashSet<>(headSet);
-        headAndIndex.addAll(indexSet);
+        Set<String> headAndIndex = new HashSet<>(treeMap.keySet());
+        headAndIndex.addAll(indexMap.keySet());
 
-        Set<String> indexAndWorking = new HashSet<>(indexSet);
-        headAndIndex.addAll(workingSet);
+        Set<String> indexAndWorking = new HashSet<>(indexMap.keySet());
+        headAndIndex.addAll(workingMap.keySet());
 
         // Comparing head with index to get the staged changes
         for (String path : headAndIndex) {
@@ -205,6 +219,24 @@ public class Main {
                 unstaged.add(new Status.Deleted(path));
             } else if (!Arrays.equals(indexHash, workingHash)) {
                 unstaged.add(new Status.Modified(path));
+            }
+        }
+
+        for (Status status : staged) {
+            switch (status) {
+                case Status.Added a -> System.out.printf("Added %s\n", a.path());
+                case Status.Deleted a -> System.out.printf("Deleted %s\n", a.path());
+                case Status.Modified a -> System.out.printf("Modified %s\n", a.path());
+                default -> EXIT_FAILURE("Status incorrect enum");
+            }
+        }
+
+        for (Status status : unstaged) {
+            switch (status) {
+                case Status.Untracked a -> System.out.printf("Untracked %s\n", a.path());
+                case Status.Deleted a -> System.out.printf("Deleted %s\n", a.path());
+                case Status.Modified a -> System.out.printf("Modified %s\n", a.path());
+                default -> EXIT_FAILURE("Status incorrect enum");
             }
         }
     }

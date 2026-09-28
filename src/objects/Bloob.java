@@ -9,12 +9,16 @@ public class Bloob extends JitObject {
         this.content = content;
     }
 
-    @Override 
+    public static Bloob of(byte[] content) {
+        return new Bloob(content);
+    }
+
+    @Override
     public String type() {
         return TYPE;
     }
 
-    @Override 
+    @Override
     public byte[] serialiseContent() {
         return content;
     }

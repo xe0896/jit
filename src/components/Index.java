@@ -1,4 +1,5 @@
 package components;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,7 +13,10 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
+import objects.Bloob;
 import objects.JitObject;
+import objects.Tree;
+import objects.Tree.TreeEntry;
 
 public class Index {
     private ObjectStore objectStore;
@@ -35,7 +39,9 @@ public class Index {
     public void add(String path) throws IOException, NoSuchAlgorithmException, NoSuchFileException {
         // A given path would be like src/main.c
         byte[] bytes = Files.readAllBytes(Path.of(path));
-        byte[] hash = objectStore.store(bytes);
+        Bloob blob = Bloob.of(bytes);
+        // When we commit the files would already be in objects/ due to this line below
+        byte[] hash = objectStore.store(blob);
         entries.put(path, new IndexEntry(path, hash, 0100644));
     }
 
@@ -44,7 +50,7 @@ public class Index {
      */
     public void remove(String path) {
         entries.remove(path);
-    }   
+    }
 
     /** 
      * After the user has done git add to all the relevant files, then
@@ -55,7 +61,7 @@ public class Index {
     public void write() throws IOException {
         List<String> lines = new ArrayList<>();
 
-        for(var entry : entries.entrySet()) {
+        for (var entry : entries.entrySet()) {
             String path = entry.getKey();
             IndexEntry idx = entry.getValue();
             String hex = HexFormat.of().formatHex(idx.hash());
@@ -63,7 +69,7 @@ public class Index {
 
             lines.add(res);
         }
-        
+
         Files.write(INDEX_PATH, lines);
     }
 
@@ -73,12 +79,12 @@ public class Index {
     public void read() throws IOException {
         // <mode> <hex> <path>\n
 
-        for(String line : Files.readAllLines(INDEX_PATH)) {
+        for (String line : Files.readAllLines(INDEX_PATH)) {
             String[] parts = line.split(" ", 3);
             String _mode = parts[0];
             String _hex = parts[1];
             String path = parts[2];
-            
+
             int mode = Integer.parseInt(_mode);
             byte[] hash = HexFormat.of().parseHex(_hex);
 
@@ -96,16 +102,23 @@ public class Index {
      */
     public byte[] buildTree() throws IOException, NoSuchAlgorithmException {
         Map<String, List<IndexEntry>> map = new HashMap<>();
-        for(String path : entries.keySet()) {
+        for (String path : entries.keySet()) {
             // For each path so src/main.c
             int idx = path.lastIndexOf("/");
-            if(idx == -1) {
-                if(!map.containsKey("")) map.put("", new ArrayList<>());
+            // Obtain idx of last "/" so then we can get the folder of this
+            // such as src/main.c, and take the idx "/" and go up to not including
+            // so substring(0, idx)
+            if (idx == -1) {
+                // idx == -1 suggests this is a root file, make a special case of
+                // "" to hold root files
+                if (!map.containsKey(""))
+                    map.put("", new ArrayList<>());
                 List<IndexEntry> list = map.get("");
                 list.add(entries.get(path));
             } else {
                 String dir = path.substring(0, idx);
-                if(!map.containsKey(dir)) map.put(dir, new ArrayList<>());
+                if (!map.containsKey(dir))
+                    map.put(dir, new ArrayList<>());
                 List<IndexEntry> list = map.get(dir);
                 list.add(entries.get(path));
             }
@@ -113,31 +126,26 @@ public class Index {
 
         byte[] root = null;
 
-        for(var inst : map.entrySet()) {
+        // Populate the objects/ folder with the trees, the blobs are already there due to git add 
+        for (var inst : map.entrySet()) {
             String dir = inst.getKey();
             List<IndexEntry> list = inst.getValue();
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            for(IndexEntry entry : list) {
-                
-                String path = entry.path();
+            List<TreeEntry> treeEntries = new ArrayList<>();
 
-                out.write(dir.getBytes(JitObject.ascii));
-                out.write(' ');
-
-                int idx = path.lastIndexOf("/");
-                String name = path.substring(idx + 1, path.length());
-
-                out.write(name.getBytes(JitObject.ascii));
-                out.write(0);
-                out.write(entry.hash());
+            for (IndexEntry entry : list) {
+                treeEntries.add(new TreeEntry(entry.hash(), entry.mode(), entry.path()));
             }
-            byte[] byteArray = out.toByteArray();
-            objectStore.store(byteArray);
-            if(dir == "") root = byteArray;
+
+            Tree tree = Tree.of(treeEntries);
+
+            byte[] hash = objectStore.store(tree);
+            if (dir.equals(""))
+                root = hash;
         }
 
         return root;
     }
 
-    public record IndexEntry(String path, byte[] hash, int mode) {}
+    public record IndexEntry(String path, byte[] hash, int mode) {
+    }
 }

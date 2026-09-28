@@ -1,4 +1,5 @@
 package objects;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,15 +18,19 @@ public class Tree extends JitObject {
         this.entries = entries;
     }
 
-    @Override 
+    public static Tree of(List<TreeEntry> e) {
+        return new Tree(e);
+    }
+
+    @Override
     public String type() {
         return TYPE;
     }
 
-    @Override 
+    @Override
     public byte[] serialiseContent() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        for(TreeEntry entry : entries) {
+        for (TreeEntry entry : entries) {
             entry.writeTo(out);
         }
         return out.toByteArray();
@@ -34,7 +39,7 @@ public class Tree extends JitObject {
     public static Map<String, byte[]> flattenTree(Tree tree) {
         Map<String, byte[]> map = new HashMap<>();
 
-        for(TreeEntry entry : tree.entries) {
+        for (TreeEntry entry : tree.entries) {
             map.put(entry.name(), entry.hash());
         }
         return map;
@@ -50,10 +55,10 @@ public class Tree extends JitObject {
         int cursor = 0;
         byte[] source = payload;
 
-        while(cursor < payload.length) {
-            Deque<byte[]> list1 = JitObject.split(source, (byte)' ', 0, 1);
+        while (cursor < payload.length) {
+            Deque<byte[]> list1 = JitObject.split(source, (byte) ' ', 0, 1);
             byte[] _mode = list1.poll();
-            Deque<byte[]> list2 = JitObject.split(list1.poll(), (byte)0, 0, 1);
+            Deque<byte[]> list2 = JitObject.split(list1.poll(), (byte) 0, 0, 1);
             byte[] _name = list2.poll();
             byte[] hash = Arrays.copyOfRange(list2.poll(), 0, HASH_LENGTH);
 
@@ -70,7 +75,7 @@ public class Tree extends JitObject {
         return new Tree(e);
     }
 
-    private record TreeEntry(byte[] hash, int mode, String name) {
+    public record TreeEntry(byte[] hash, int mode, String name) {
         /** 
          * The hash here could either be another tree or a blob, the mode
          * also can be applied to trees like blobs
