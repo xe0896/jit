@@ -66,9 +66,19 @@ public class Main {
         }
     }
 
-    public static void commit(String message) {
+    public static void commit(String message) throws IOException {
         // When we commit that would make the HEAD point to this new commit, we need to take a snapshot
         // of the current index
+        ObjectStore objStore = new ObjectStore();
+        Index index = new Index(objStore);
+
+        index.read();
+
+        for (var entry : index.entries.values()) {
+            byte[] envelope = entry.hash();
+            JitObject object = objStore.load(envelope).get();
+            System.out.println(object.getClass().getSimpleName());
+        }
     }
 
     public static void pull() {

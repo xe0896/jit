@@ -1,4 +1,5 @@
 package objects;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -15,8 +16,9 @@ public abstract class JitObject {
     public static final Charset ascii = StandardCharsets.US_ASCII;
     public static final Charset utf = StandardCharsets.UTF_8;
     public static final int HASH_LENGTH = 20;
-    
+
     abstract String type();
+
     abstract byte[] serialiseContent() throws IOException;
 
     /** 
@@ -56,19 +58,20 @@ public abstract class JitObject {
         limit--; // Temporary
         int prev = from;
 
-        for(int i = from; i < source.length && limit != 0; i++) {
+        for (int i = from; i < source.length && limit != 0; i++) {
             // Whenever we find the delimiter we take that byte subarray
             // and append to the list and decrement limit until we have
             // reached the limit or we cannot go further into the source
 
-            if(source[i] == delimiter) {
+            if (source[i] == delimiter) {
                 list.offer(Arrays.copyOfRange(source, prev, i));
-                if(limit > 0) limit--;
+                if (limit > 0)
+                    limit--;
                 prev = i + 1;
             }
         }
 
-        if(limit != 0 && prev < source.length) {
+        if (limit != 0 && prev < source.length) {
             list.offer(Arrays.copyOfRange(source, prev, source.length));
         }
 
@@ -84,22 +87,38 @@ public abstract class JitObject {
     public static JitObject deserialise(byte[] envelope) {
         int i = 0;
         int whitespace = 0;
-        for(;i < envelope.length; i++) {
+        System.out.println("Bytes: " + Arrays.toString(envelope));
+        for (; i < envelope.length; i++) {
             byte b = envelope[i];
-            if(b == ' ') whitespace = i;
-            if(b == 0) break;
+            if (b == ' ')
+                whitespace = i;
+            if (b == 0)
+                break;
         }
         byte[] type = Arrays.copyOfRange(envelope, 0, whitespace);
         String typeStr = new String(type, StandardCharsets.US_ASCII);
 
-        byte[] content = Arrays.copyOfRange(envelope, i+1, envelope.length);
-        
-        switch(typeStr) {
-            case "blob" -> {return Bloob.parseContent(content);}
-            case "tree" -> {return Tree.parseContent(content);}
-            case "commit" -> {return Commit.parseContent(content);}
-            case "tag" -> {return Tag.parseContent(content);}
-            default -> {return null;}
+        System.out.println(i + 1);
+        System.out.println(envelope.length);
+
+        byte[] content = Arrays.copyOfRange(envelope, i + 1, envelope.length);
+
+        switch (typeStr) {
+            case "blob" -> {
+                return Bloob.parseContent(content);
+            }
+            case "tree" -> {
+                return Tree.parseContent(content);
+            }
+            case "commit" -> {
+                return Commit.parseContent(content);
+            }
+            case "tag" -> {
+                return Tag.parseContent(content);
+            }
+            default -> {
+                return null;
+            }
         }
     }
 
@@ -118,6 +137,6 @@ public abstract class JitObject {
 
         byte[] hash = md.digest(serialised);
 
-        return hash;   
+        return hash;
     }
 }

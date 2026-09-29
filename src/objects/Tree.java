@@ -69,13 +69,13 @@ public class Tree extends JitObject {
             cursor += jump;
             source = Arrays.copyOfRange(source, jump, source.length);
 
-            e.add(new TreeEntry(hash, mode, name));
+            e.add(new TreeEntry(name, hash, mode));
         }
 
         return new Tree(e);
     }
 
-    public record TreeEntry(byte[] hash, int mode, String name) {
+    public record TreeEntry(String path, byte[] hash, int mode) {
         /** 
          * The hash here could either be another tree or a blob, the mode
          * also can be applied to trees like blobs

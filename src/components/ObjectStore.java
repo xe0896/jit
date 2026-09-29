@@ -44,7 +44,7 @@ public class ObjectStore {
         if (!Files.exists(path))
             return Optional.empty();
 
-        JitObject object = JitObject.deserialise(hash);
+        JitObject object = JitObject.deserialise(Files.readAllBytes(path));
 
         return Optional.of(object);
     }
