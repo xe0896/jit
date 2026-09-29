@@ -95,10 +95,8 @@ public class Index {
      */
     public void read() throws IOException {
         // <mode> <hex> <path>\n
-        System.out.println(Files.readAllLines(INDEX_PATH));
         // A line was delimited via '\n' by write()
         for (String line : Files.readAllLines(INDEX_PATH)) {
-            System.out.println("Line: " + line);
             // Splits each line into 3 parts to grab the full TreeEntry
             String[] parts = line.split(" ", 3);
             String _mode = parts[0];

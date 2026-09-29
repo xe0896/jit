@@ -12,15 +12,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import objects.Tree;
+import objects.Tree.TreeEntry;
 import objects.Commit;
 import objects.JitObject;
 import components.Index;
 import components.ObjectStore;
 import components.Status;
-import components.Index.IndexEntry;
 
 public class Main {
     private static final String INIT = "init";
@@ -74,11 +75,6 @@ public class Main {
 
         index.read();
 
-        for (var entry : index.entries.values()) {
-            byte[] envelope = entry.hash();
-            JitObject object = objStore.load(envelope).get();
-            System.out.println(object.getClass().getSimpleName());
-        }
     }
 
     public static void pull() {
@@ -102,7 +98,6 @@ public class Main {
             }
         }
 
-        System.out.println(index.entries);
     }
 
     public static Map<String, byte[]> getWorkingPaths() throws IOException {
@@ -113,14 +108,13 @@ public class Main {
 
         while (!stack.isEmpty()) {
             Path cur = stack.pop();
-            System.out.println(" " + cur);
             if (Files.isDirectory(cur)) {
+                if (cur.getFileName().toString().equals(".jit") || cur.getFileName().toString().equals(".git"))
+                    continue;
                 Files.list(cur).forEach(path -> {
-                    System.out.printf("Folder name: %s\n", path);
                     stack.push(path);
                 });
             } else {
-                System.out.printf("File name: %s\n", cur);
                 currentPaths.put(cur.toString(), Files.readAllBytes(cur));
             }
         }
@@ -132,7 +126,7 @@ public class Main {
      * Returns the commit hash of the HEAD file, HEAD may either be attached so with a ref or detatched with a straight hash
      * @return byte[]
      */
-    public static Commit resolveHead(ObjectStore objStore) throws IOException {
+    public static Optional<Commit> resolveHead(ObjectStore objStore) throws IOException {
         // Detatched HEAD, this means that the HEAD would store a hash rather than a ref, meaning the person must of
         // switched to a previous commit and the HEAD would store that hash commit in the file rather then a ref of the
         // main/master branch, this is because someone must of checkouted to a specific commit hash which makes the HEAD
@@ -147,7 +141,7 @@ public class Main {
             // path=refs/heads/master
 
             if (!Files.exists(_path))
-                EXIT_FAILURE("No 'master' file, commit atleast once before 'jit status'");
+                return Optional.empty();
 
             // Reads the hash stored in the master file that was pointed to
             // by HEAD then uses that hash to go into objects and find
@@ -157,12 +151,12 @@ public class Main {
             // so an actual hierarchy of files/folders
             JitObject object = objStore.load(Files.readAllBytes(_path)).get();
             Commit commit = (Commit) object;
-            return commit;
+            return Optional.of(commit);
         }
 
         JitObject object = objStore.load(HEAD).get();
         Commit commit = (Commit) object;
-        return commit;
+        return Optional.of(commit);
     }
 
     public static void status() throws IOException {
@@ -173,12 +167,15 @@ public class Main {
         // HEAD vs index: what has been staged and is ready to be committed
         // index vs working directory: what has changed but hasn't been staged
         // last case is working directory files not being staged at all
-        Commit commit = resolveHead(objStore);
-        Tree tree = (Tree) objStore.load(commit.treeHash).get();
-        Map<String, byte[]> treeMap = Tree.flattenTree(tree);
+        Optional<Commit> commit = resolveHead(objStore);
+
+        Map<String, byte[]> treeMap = (!commit.isEmpty())
+                ? Tree.flattenTree((Tree) objStore.load(commit.get().treeHash).get())
+                : new HashMap<>();
+
         Map<String, byte[]> workingMap = getWorkingPaths();
         index.read();
-        Map<String, IndexEntry> indexMap = index.entries;
+        Map<String, TreeEntry> indexMap = index.entries;
 
         List<Status> staged = new ArrayList<>();
         List<Status> unstaged = new ArrayList<>();
@@ -191,7 +188,10 @@ public class Main {
         headAndIndex.addAll(indexMap.keySet());
 
         Set<String> indexAndWorking = new HashSet<>(indexMap.keySet());
-        headAndIndex.addAll(workingMap.keySet());
+        indexAndWorking.addAll(workingMap.keySet());
+
+        System.out.println("workingSet: " + workingMap.keySet());
+        System.out.println("indexMap: " + indexMap.keySet());
 
         // Comparing head with index to get the staged changes
         for (String path : headAndIndex) {
@@ -243,9 +243,9 @@ public class Main {
 
         for (Status status : unstaged) {
             switch (status) {
-                case Status.Untracked a -> System.out.printf("Untracked %s\n", a.path());
-                case Status.Deleted a -> System.out.printf("Deleted %s\n", a.path());
-                case Status.Modified a -> System.out.printf("Modified %s\n", a.path());
+                case Status.Untracked a -> System.out.printf("Untracked %s (staged)\n", a.path());
+                case Status.Deleted a -> System.out.printf("Deleted %s (staged)\n", a.path());
+                case Status.Modified a -> System.out.printf("Modified %s (staged)\n", a.path());
                 default -> EXIT_FAILURE("Status incorrect enum");
             }
         }

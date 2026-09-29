@@ -40,7 +40,7 @@ public class Tree extends JitObject {
         Map<String, byte[]> map = new HashMap<>();
 
         for (TreeEntry entry : tree.entries) {
-            map.put(entry.name(), entry.hash());
+            map.put(entry.path(), entry.hash());
         }
         return map;
     }
@@ -85,7 +85,7 @@ public class Tree extends JitObject {
         public void writeTo(ByteArrayOutputStream out) throws IOException {
             out.write(Integer.toOctalString(mode).getBytes(JitObject.ascii));
             out.write(' ');
-            out.write(name.getBytes(JitObject.ascii));
+            out.write(path.getBytes(JitObject.ascii));
             out.write(0);
             out.write(hash);
         }
