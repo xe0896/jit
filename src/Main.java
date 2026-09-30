@@ -17,6 +17,7 @@ import java.util.Set;
 
 import objects.Tree;
 import objects.Tree.TreeEntry;
+import objects.Bloob;
 import objects.Commit;
 import objects.JitObject;
 import components.Index;
@@ -30,7 +31,13 @@ public class Main {
     private static final String PULL = "pull";
     private static final String COMMIT = "commit";
 
+    private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
+
     public static final Path JIT = Path.of(".jit");
+
+    public static final String RED = "\u001B[31m";
+    public static final String GREEN = "\u001B[32m";
+    public static final String RESET = "\u001B[0m";
 
     public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException {
         if (args.length == 0)
@@ -100,6 +107,9 @@ public class Main {
 
     }
 
+    record HeadInfo(Optional<String> branch, Commit commit) {
+    }
+
     public static Map<String, byte[]> getWorkingPaths() throws IOException {
         Map<String, byte[]> currentPaths = new HashMap<>();
         Deque<Path> stack = new ArrayDeque<>();
@@ -108,9 +118,9 @@ public class Main {
 
         while (!stack.isEmpty()) {
             Path cur = stack.pop();
+            if (ignores.contains(cur.getFileName().toString()))
+                continue;
             if (Files.isDirectory(cur)) {
-                if (cur.getFileName().toString().equals(".jit") || cur.getFileName().toString().equals(".git"))
-                    continue;
                 Files.list(cur).forEach(path -> {
                     stack.push(path);
                 });
@@ -126,7 +136,7 @@ public class Main {
      * Returns the commit hash of the HEAD file, HEAD may either be attached so with a ref or detatched with a straight hash
      * @return byte[]
      */
-    public static Optional<Commit> resolveHead(ObjectStore objStore) throws IOException {
+    public static Optional<HeadInfo> resolveHead(ObjectStore objStore) throws IOException {
         // Detatched HEAD, this means that the HEAD would store a hash rather than a ref, meaning the person must of
         // switched to a previous commit and the HEAD would store that hash commit in the file rather then a ref of the
         // main/master branch, this is because someone must of checkouted to a specific commit hash which makes the HEAD
@@ -137,7 +147,12 @@ public class Main {
 
         if (stringHead.substring(0, 3).equals("ref")) {
             // ref: refs/heads/master
-            Path _path = Path.of(stringHead.substring(5));
+            String branch = stringHead.substring(5);
+            Path _path = Path.of(branch);
+
+            int idx = stringHead.lastIndexOf("/");
+            System.out.println(stringHead.substring(idx + 1));
+
             // path=refs/heads/master
 
             if (!Files.exists(_path))
@@ -151,12 +166,12 @@ public class Main {
             // so an actual hierarchy of files/folders
             JitObject object = objStore.load(Files.readAllBytes(_path)).get();
             Commit commit = (Commit) object;
-            return Optional.of(commit);
+            return Optional.of(new HeadInfo(Optional.of(branch), commit));
         }
 
         JitObject object = objStore.load(HEAD).get();
         Commit commit = (Commit) object;
-        return Optional.of(commit);
+        return Optional.of(new HeadInfo(Optional.empty(), commit));
     }
 
     public static void status() throws IOException {
@@ -167,15 +182,33 @@ public class Main {
         // HEAD vs index: what has been staged and is ready to be committed
         // index vs working directory: what has changed but hasn't been staged
         // last case is working directory files not being staged at all
-        Optional<Commit> commit = resolveHead(objStore);
+        Optional<HeadInfo> commit = resolveHead(objStore);
 
         Map<String, byte[]> treeMap = (!commit.isEmpty())
-                ? Tree.flattenTree((Tree) objStore.load(commit.get().treeHash).get())
+                ? Tree.flattenTree((Tree) objStore.load(commit.get().commit().treeHash).get())
                 : new HashMap<>();
 
         Map<String, byte[]> workingMap = getWorkingPaths();
         index.read();
-        Map<String, TreeEntry> indexMap = index.entries;
+
+        // index.entries is used to get Map<String, byte[]> where byte[] is a SHA-1 hash of the
+        // object that matches what is stored in the objects/. The hash won't contian the raw
+        // file contents since it has other stuff such as the type, working directory takes the
+        // hash file contents so we need to map this back and since this is gonna be a blob
+        // then we can just read the full contents pointed to by object/
+
+        Map<String, byte[]> indexMap = new HashMap<>();
+
+        for (var entry : index.entries.entrySet()) {
+            String path = entry.getKey();
+            TreeEntry e = entry.getValue();
+
+            JitObject object = objStore.load(e.hash()).get();
+            Bloob blob = (Bloob) object;
+            indexMap.put(path, blob.serialiseContent());
+        }
+
+        // Map<String, TreeEntry> indexMap = index.entries;
 
         List<Status> staged = new ArrayList<>();
         List<Status> unstaged = new ArrayList<>();
@@ -190,13 +223,10 @@ public class Main {
         Set<String> indexAndWorking = new HashSet<>(indexMap.keySet());
         indexAndWorking.addAll(workingMap.keySet());
 
-        System.out.println("workingSet: " + workingMap.keySet());
-        System.out.println("indexMap: " + indexMap.keySet());
-
         // Comparing head with index to get the staged changes
         for (String path : headAndIndex) {
             byte[] headHash = treeMap.get(path);
-            byte[] indexHash = (indexMap.containsKey(path)) ? indexMap.get(path).hash() : null;
+            byte[] indexHash = indexMap.get(path);
 
             if (headHash == null) {
                 // Head hash may be null as the file may have been created to be git added since this "path"
@@ -217,7 +247,7 @@ public class Main {
         }
 
         for (String path : indexAndWorking) {
-            byte[] indexHash = (indexMap.containsKey(path)) ? indexMap.get(path).hash() : null;
+            byte[] indexHash = indexMap.get(path);
             byte[] workingHash = workingMap.get(path);
 
             if (indexHash == null) {
@@ -232,23 +262,31 @@ public class Main {
             }
         }
 
+        // A branch name may exist or not, handles if there was nothing in the HEAD so its the first commit
+        // so we assign it to be empty, else it would go to commit.get().branch() which still be empty 
+        Optional<String> branch = (commit.isEmpty()) ? Optional.empty() : commit.get().branch();
+        statusPrint(branch, staged, unstaged);
+    }
+
+    public static void statusPrint(Optional<String> branch, List<Status> staged, List<Status> unstaged) {
         for (Status status : staged) {
             switch (status) {
-                case Status.Added a -> System.out.printf("Added %s\n", a.path());
-                case Status.Deleted a -> System.out.printf("Deleted %s\n", a.path());
-                case Status.Modified a -> System.out.printf("Modified %s\n", a.path());
+                case Status.Added a -> System.out.printf("Added '%s' (staged)\n", a.path());
+                case Status.Deleted a -> System.out.printf("Deleted '%s' (staged)\n", a.path());
+                case Status.Modified a -> System.out.printf("Modified '%s' (staged)\n", a.path());
                 default -> EXIT_FAILURE("Status incorrect enum");
             }
         }
 
         for (Status status : unstaged) {
             switch (status) {
-                case Status.Untracked a -> System.out.printf("Untracked %s (staged)\n", a.path());
-                case Status.Deleted a -> System.out.printf("Deleted %s (staged)\n", a.path());
-                case Status.Modified a -> System.out.printf("Modified %s (staged)\n", a.path());
+                case Status.Untracked a -> System.out.printf("Untracked '%s'\n", a.path());
+                case Status.Deleted a -> System.out.printf("Deleted '%s'\n", a.path());
+                case Status.Modified a -> System.out.printf("Modified '%s'\n", a.path());
                 default -> EXIT_FAILURE("Status incorrect enum");
             }
         }
+
     }
 
     public static void init() throws IOException {

@@ -87,7 +87,6 @@ public abstract class JitObject {
     public static JitObject deserialise(byte[] envelope) {
         int i = 0;
         int whitespace = 0;
-        System.out.println("Bytes: " + Arrays.toString(envelope));
         for (; i < envelope.length; i++) {
             byte b = envelope[i];
             if (b == ' ')
@@ -97,9 +96,6 @@ public abstract class JitObject {
         }
         byte[] type = Arrays.copyOfRange(envelope, 0, whitespace);
         String typeStr = new String(type, StandardCharsets.US_ASCII);
-
-        System.out.println(i + 1);
-        System.out.println(envelope.length);
 
         byte[] content = Arrays.copyOfRange(envelope, i + 1, envelope.length);
 
