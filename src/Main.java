@@ -147,11 +147,11 @@ public class Main {
 
         if (stringHead.substring(0, 3).equals("ref")) {
             // ref: refs/heads/master
-            String branch = stringHead.substring(5);
-            Path _path = Path.of(branch);
+            String refsPath = stringHead.substring(5);
+            Path _path = Path.of(refsPath);
 
             int idx = stringHead.lastIndexOf("/");
-            System.out.println(stringHead.substring(idx + 1));
+            String branch = stringHead.substring(idx + 1);
 
             // path=refs/heads/master
 
@@ -212,6 +212,7 @@ public class Main {
 
         List<Status> staged = new ArrayList<>();
         List<Status> unstaged = new ArrayList<>();
+        List<Status> untracked = new ArrayList<>();
 
         // Staged changes: compares head with index, (added, modified, deleted)
         // Unstaged changes: compares index with working, (modified, deleted)
@@ -252,7 +253,7 @@ public class Main {
 
             if (indexHash == null) {
                 // Index hash may be null as this is a new file that has been created but hasn't been git added yet
-                unstaged.add(new Status.Untracked(path));
+                untracked.add(new Status.Untracked(path));
             } else if (workingHash == null) {
                 // Working hash may be null as the file may of been deleted but not reflected in index yet since
                 // they may of done rm file.txt instead of git rm file.txt
@@ -265,27 +266,80 @@ public class Main {
         // A branch name may exist or not, handles if there was nothing in the HEAD so its the first commit
         // so we assign it to be empty, else it would go to commit.get().branch() which still be empty 
         Optional<String> branch = (commit.isEmpty()) ? Optional.empty() : commit.get().branch();
-        statusPrint(branch, staged, unstaged);
+        String message = statusPrint(branch, staged, unstaged, untracked);
+        System.out.println(message);
     }
 
-    public static void statusPrint(Optional<String> branch, List<Status> staged, List<Status> unstaged) {
-        for (Status status : staged) {
-            switch (status) {
-                case Status.Added a -> System.out.printf("Added '%s' (staged)\n", a.path());
-                case Status.Deleted a -> System.out.printf("Deleted '%s' (staged)\n", a.path());
-                case Status.Modified a -> System.out.printf("Modified '%s' (staged)\n", a.path());
-                default -> EXIT_FAILURE("Status incorrect enum");
+    public static void statusPrinter(StringBuilder sb, String ANSI, String text, String path) {
+        sb.append("      ");
+        sb.append(ANSI);
+        sb.append(text);
+        sb.append("  ");
+        sb.append(path);
+        sb.append(RESET);
+        sb.append("\n");
+    }
+
+    public static String statusPrint(Optional<String> branch, List<Status> staged, List<Status> unstaged,
+            List<Status> untracked) {
+
+        StringBuilder bra = new StringBuilder();
+
+        if (branch.isEmpty()) {
+            bra.append("No commits yet, therefore no branch\n");
+        } else {
+            bra.append(String.format("On branch %s\n", branch.get()));
+        }
+
+        String space = "      ";
+        String smallerSpace = "  ";
+        StringBuilder stage = new StringBuilder();
+        StringBuilder unstage = new StringBuilder();
+        StringBuilder untrack = new StringBuilder();
+
+        if (!staged.isEmpty()) {
+            stage.append("Changes to be committed:\n");
+            for (Status status : staged) {
+                switch (status) {
+                    case Status.Added a -> {
+                        statusPrinter(stage, GREEN, "added: ", a.path());
+                    }
+                    case Status.Deleted a -> {
+                        statusPrinter(stage, GREEN, "deleted: ", a.path());
+                    }
+                    case Status.Modified a -> {
+                        statusPrinter(stage, GREEN, "modified", a.path());
+                    }
+                    default -> EXIT_FAILURE("Status incorrect enum");
+                }
+            }
+        }
+        if (!unstaged.isEmpty()) {
+            unstage.append("Changes not staged for commit:\n");
+            for (Status status : unstaged) {
+                switch (status) {
+                    case Status.Untracked a -> {
+                        statusPrinter(unstage, RED, "untracked: ", a.path());
+                    }
+                    case Status.Deleted a -> {
+                        statusPrinter(unstage, RED, "deleted: ", a.path());
+                    }
+                    case Status.Modified a -> {
+                        statusPrinter(unstage, RED, "modified: ", a.path());
+                    }
+                    default -> EXIT_FAILURE("Status incorrect enum");
+                }
+            }
+        }
+        if (!untracked.isEmpty()) {
+            untrack.append("Untracked files:\n");
+            for (Status status : untracked) {
+                Status.Untracked a = (Status.Untracked) status;
+                statusPrinter(untrack, RED, "untracked: ", a.path());
             }
         }
 
-        for (Status status : unstaged) {
-            switch (status) {
-                case Status.Untracked a -> System.out.printf("Untracked '%s'\n", a.path());
-                case Status.Deleted a -> System.out.printf("Deleted '%s'\n", a.path());
-                case Status.Modified a -> System.out.printf("Modified '%s'\n", a.path());
-                default -> EXIT_FAILURE("Status incorrect enum");
-            }
-        }
+        return bra.toString() + stage.toString() + unstage.toString() + untrack.toString();
 
     }
 
