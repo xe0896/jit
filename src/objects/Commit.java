@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
+import components.ObjectStore;
 import entities.*;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
@@ -19,9 +20,13 @@ import entities.*;
 public class Commit extends JitObject {
     private static final String TYPE = "commit";
 
-    public byte[] treeHash; // Points to the root tree
-    private List<byte[]> parentHashes; // Zero or more parents
-    private final static int DELIMITERS = 5;
+    // Points to the tree hash stored in objects/, the contents of the commit
+    public byte[] treeHash;
+
+    // A list of previous commits from this one, the reason why it aint a pointer
+    // like Commit c that points backwards, that would require deserialisation 
+    // of all parents, having a hash that points to each is better.
+    private List<byte[]> parentHashes;
 
     private Author author;
     private Committer committer;
@@ -36,16 +41,16 @@ public class Commit extends JitObject {
         this.message = message;
     }
 
-    @Override 
+    @Override
     public String type() {
         return TYPE;
     }
 
-    @Override 
+    @Override
     public byte[] serialiseContent() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream outPrim = new DataOutputStream(out);
-        
+
         out.write(author.name().getBytes(JitObject.utf));
         out.write(0);
         out.write(author.email().getBytes(JitObject.utf));
@@ -62,8 +67,8 @@ public class Commit extends JitObject {
         outPrim.writeInt(parentHashes.size());
         out.write(0);
 
-        for(int i = 0; i < parentHashes.size(); i++) {
-            byte[] parentHash = parentHashes.get(i);   
+        for (int i = 0; i < parentHashes.size(); i++) {
+            byte[] parentHash = parentHashes.get(i);
             out.write(parentHash);
         }
 
@@ -77,7 +82,7 @@ public class Commit extends JitObject {
         // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
         // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
-        Deque<byte[]> list = JitObject.split(content, (byte)0, 0, 5);
+        Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 5);
 
         byte[] _aname = list.poll();
         byte[] _aemail = list.poll();
@@ -89,7 +94,7 @@ public class Commit extends JitObject {
         byte[] _parentHashes = list.poll();
 
         byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
-        byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2*Long.BYTES);
+        byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2 * Long.BYTES);
 
         String authorName = new String(_aname, JitObject.utf);
         String authorEmail = new String(_aemail, JitObject.utf);
@@ -103,15 +108,16 @@ public class Commit extends JitObject {
         Author author = new Author(authorName, authorEmail, authorTime);
         Committer committer = new Committer(committerName, committerEmail, committerTime);
 
-        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES, 2*Long.BYTES + JitObject.HASH_LENGTH);
-        byte[] _length = Arrays.copyOfRange(timeHashLength, 2*Long.BYTES + JitObject.HASH_LENGTH, timeHashLength.length);
+        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES, 2 * Long.BYTES + JitObject.HASH_LENGTH);
+        byte[] _length = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES + JitObject.HASH_LENGTH,
+                timeHashLength.length);
 
         int length = ByteBuffer.wrap(_length).getInt();
 
         int parentIdx = 0;
         List<byte[]> parentHashes = new ArrayList<>();
 
-        for(int i = 0; i < length; i++) {            
+        for (int i = 0; i < length; i++) {
             byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + JitObject.HASH_LENGTH);
             parentHashes.add(parentHash);
             parentIdx += JitObject.HASH_LENGTH;

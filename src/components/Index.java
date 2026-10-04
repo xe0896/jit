@@ -148,28 +148,39 @@ public class Index {
         // a tree still exists though since 
         byte[] root = null;
 
+        // Gets a list of directories
         List<String> dirs = new ArrayList<>(map.keySet());
 
+        // Sorts by having the deepest directories to be processed first, this is because
+        // there is dependencies starting from the top, so we process them first
+
+        // To think of this, the deepest directory has no directory, it just has files so
+        // then that would do Tree.of(list) with no directories so its safe, and also record its entry
+        // so then we need to go to its parent provide its identity and then it can do Tree.of(list)
+        // to get the full entry (directory + file)
         dirs.sort(Comparator.comparingInt((String dir) -> dir.isEmpty() ? 0 : dir.split("/").length).reversed());
 
         for (String path : dirs) {
-            // src/lib/
-            // src/
             List<TreeEntry> list = map.get(path);
-
             Tree tree = Tree.of(list);
+
+            // Store the tree into the object store, so that we can keep it state as this function
+            // would be call for a commit
             byte[] hash = objectStore.store(tree);
 
+            // Given that the path is empty, this suggests that this is the root directory, and we need
+            // this to return so that we can branch to the others seen this is the starting point
+            // and we continue as there is no parent to propagate to
             if (path.isEmpty()) {
                 root = hash;
                 continue;
             }
 
             int idx = path.lastIndexOf("/");
-
             String parent = (idx == -1) ? "" : path.substring(0, idx);
             String name = (idx == -1) ? path : path.substring(idx + 1);
 
+            // Add this entry into the parent so that it has one of its missing directory resolved
             if (!map.containsKey(parent))
                 map.put(path, new ArrayList<>());
             List<TreeEntry> parentList = map.get(parent);

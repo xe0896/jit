@@ -74,13 +74,20 @@ public class Main {
         }
     }
 
-    public static void commit(String message) throws IOException {
+    public static Commit createCommit(byte[] treeHash) {
+
+    }
+
+    public static void commit(String message) throws IOException, NoSuchAlgorithmException {
         // When we commit that would make the HEAD point to this new commit, we need to take a snapshot
         // of the current index
         ObjectStore objStore = new ObjectStore();
         Index index = new Index(objStore);
 
-        index.read();
+        index.read(); // Read what is the current index file, what has been added
+
+        // Tree root of the indexed files
+        byte[] root = index.buildTree();
 
     }
 
