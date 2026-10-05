@@ -39,6 +39,9 @@ public class Main {
     public static final String GREEN = "\u001B[32m";
     public static final String RESET = "\u001B[0m";
 
+    record HeadInfo(Optional<String> branch, Optional<Commit> commit) {
+    }
+
     public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException {
         if (args.length == 0)
             EXIT_FAILURE("Provide more arguments");
@@ -74,13 +77,19 @@ public class Main {
         }
     }
 
-    public static Commit createCommit(byte[] treeHash) {
+    public static Commit createCommit(String message, byte[] treeHash) {
+        // Creating a commit is done by given the tree hash we have the contents from that
+        // but we also need to have a list of the previous commits relative to this one
+        // we can do that by 
+        ObjectStore objStore = new ObjectStore();
+        Index index = new Index(objStore);
 
+        return null;
     }
 
     public static void commit(String message) throws IOException, NoSuchAlgorithmException {
-        // When we commit that would make the HEAD point to this new commit, we need to take a snapshot
-        // of the current index
+        // When we commit that would make the HEAD point to this new commit, 
+        // we need to take a snapshot of the current index
         ObjectStore objStore = new ObjectStore();
         Index index = new Index(objStore);
 
@@ -89,6 +98,49 @@ public class Main {
         // Tree root of the indexed files
         byte[] root = index.buildTree();
 
+        HeadInfo head = resolveHead(objStore);
+        Optional<String> _branch = head.branch();
+        Optional<Commit> _prevCommit = head.commit();
+
+        if (_prevCommit.isEmpty()) {
+            // An empty commit means this is the first commit, so there is no 
+            // commit list we have to construct for this commit, this means
+            // that we create the list of previous hashes to be empty
+
+            List<byte[]> parentHashes = new ArrayList<>();
+
+            Commit commit = Commit.of(root, parentHashes, null, null, message);
+
+            objStore.store(commit);
+        } else {
+            // A commit exists so we have to deserialise it and get the list it has
+            // and then append that commit to it then use that as the list for this commit
+
+            Commit prevCommit = _prevCommit.get();
+
+            // Grab the previous commits previous hashes, then add the previous commit to the list
+            // as this would be the previous hash list for the current commit
+            List<byte[]> parentHashes = prevCommit.parentHashes;
+            parentHashes.add(prevCommit.treeHash);
+
+            Commit commit = Commit.of(root, parentHashes, null, null, message);
+
+            objStore.store(commit);
+        }
+
+        if (_branch.isEmpty()) {
+            // Detatched HEAD, store in the HEAD file directly the commit hash
+            Files.write(JIT.resolve("HEAD"), root);
+        } else {
+            // Undetatched, meaning it is pointing to the tip of a branch stored
+            // in head, so store the current hash to where it is pointing to
+            byte[] HEAD = Files.readAllBytes(JIT.resolve("HEAD"));
+            String stringHead = new String(HEAD, JitObject.utf);
+            String refsPath = stringHead.substring(5);
+            Path _path = Path.of(refsPath);
+
+            Files.write(_path, root);
+        }
     }
 
     public static void pull() {
@@ -112,9 +164,6 @@ public class Main {
             }
         }
 
-    }
-
-    record HeadInfo(Optional<String> branch, Commit commit) {
     }
 
     public static Map<String, byte[]> getWorkingPaths() throws IOException {
@@ -143,7 +192,7 @@ public class Main {
      * Returns the commit hash of the HEAD file, HEAD may either be attached so with a ref or detatched with a straight hash
      * @return byte[]
      */
-    public static Optional<HeadInfo> resolveHead(ObjectStore objStore) throws IOException {
+    public static HeadInfo resolveHead(ObjectStore objStore) throws IOException {
         // Detatched HEAD, this means that the HEAD would store a hash rather than a ref, meaning the person must of
         // switched to a previous commit and the HEAD would store that hash commit in the file rather then a ref of the
         // main/master branch, this is because someone must of checkouted to a specific commit hash which makes the HEAD
@@ -152,6 +201,10 @@ public class Main {
         byte[] HEAD = Files.readAllBytes(JIT.resolve("HEAD"));
         String stringHead = new String(HEAD, JitObject.utf);
 
+        // Branch executes given that it sees refs/heads/master which means that we are at the
+        // tip of a branch, the branch may not point to anything meaning an initial commit hasn't been
+        // processed, in that case a branch name still exists as all defaults point to 'master', there 
+        // is just no commit object to refer to for the HEAD to construct for comparisons sake
         if (stringHead.substring(0, 3).equals("ref")) {
             // ref: refs/heads/master
             String refsPath = stringHead.substring(5);
@@ -162,8 +215,10 @@ public class Main {
 
             // path=refs/heads/master
 
+            // The file being empty means that this is the first commit, meaning there is a branch
+            // due to default 'master' but no commit to refer to so we say its empty
             if (!Files.exists(_path))
-                return Optional.empty();
+                return new HeadInfo(Optional.of(branch), Optional.empty());
 
             // Reads the hash stored in the master file that was pointed to
             // by HEAD then uses that hash to go into objects and find
@@ -173,12 +228,15 @@ public class Main {
             // so an actual hierarchy of files/folders
             JitObject object = objStore.load(Files.readAllBytes(_path)).get();
             Commit commit = (Commit) object;
-            return Optional.of(new HeadInfo(Optional.of(branch), commit));
+            return new HeadInfo(Optional.of(branch), Optional.of(commit));
         }
 
+        // A HEAD that does not have a ref: means it a detatched HEAD and points to a commit
+        // rather than the tip of a branch, meaning there is no branch but there is still a commit
+        // as the HEAD would store the straight hash for it
         JitObject object = objStore.load(HEAD).get();
         Commit commit = (Commit) object;
-        return Optional.of(new HeadInfo(Optional.empty(), commit));
+        return new HeadInfo(Optional.empty(), Optional.of(commit));
     }
 
     public static void status() throws IOException {
@@ -189,10 +247,12 @@ public class Main {
         // HEAD vs index: what has been staged and is ready to be committed
         // index vs working directory: what has changed but hasn't been staged
         // last case is working directory files not being staged at all
-        Optional<HeadInfo> commit = resolveHead(objStore);
+        HeadInfo head = resolveHead(objStore);
+
+        Optional<Commit> commit = head.commit();
 
         Map<String, byte[]> treeMap = (!commit.isEmpty())
-                ? Tree.flattenTree((Tree) objStore.load(commit.get().commit().treeHash).get())
+                ? Tree.flattenTree((Tree) objStore.load(commit.get().treeHash).get())
                 : new HashMap<>();
 
         Map<String, byte[]> workingMap = getWorkingPaths();
@@ -270,9 +330,8 @@ public class Main {
             }
         }
 
-        // A branch name may exist or not, handles if there was nothing in the HEAD so its the first commit
-        // so we assign it to be empty, else it would go to commit.get().branch() which still be empty 
-        Optional<String> branch = (commit.isEmpty()) ? Optional.empty() : commit.get().branch();
+        Optional<String> branch = head.branch();
+
         String message = statusPrint(branch, staged, unstaged, untracked);
         System.out.println(message);
     }
@@ -298,8 +357,6 @@ public class Main {
             bra.append(String.format("On branch %s\n", branch.get()));
         }
 
-        String space = "      ";
-        String smallerSpace = "  ";
         StringBuilder stage = new StringBuilder();
         StringBuilder unstage = new StringBuilder();
         StringBuilder untrack = new StringBuilder();

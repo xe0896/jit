@@ -26,7 +26,7 @@ public class Commit extends JitObject {
     // A list of previous commits from this one, the reason why it aint a pointer
     // like Commit c that points backwards, that would require deserialisation 
     // of all parents, having a hash that points to each is better.
-    private List<byte[]> parentHashes;
+    public List<byte[]> parentHashes;
 
     private Author author;
     private Committer committer;
@@ -39,6 +39,11 @@ public class Commit extends JitObject {
         this.author = author;
         this.committer = committer;
         this.message = message;
+    }
+
+    public static Commit of(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author,
+            String message) {
+        return new Commit(treeHash, parentHashes, committer, author, message);
     }
 
     @Override

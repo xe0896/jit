@@ -44,8 +44,9 @@ public class ObjectStore {
     }
 
     /** 
+     * Given a SHA-1 hash of the object, returns the object stored in the file
      * @param hash
-     * @return Optional<JitObject>
+     * @return Optional<JitObject> after deserialisation, returns the object
      * @throws IOException
      */
     public Optional<JitObject> load(byte[] hash) throws IOException {

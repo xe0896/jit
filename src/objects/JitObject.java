@@ -119,7 +119,7 @@ public abstract class JitObject {
     }
 
     /** 
-     * Calls the serialise function for the object and creates a hash via SHA-1
+     * Returns SHA-1 hash of the object
      * @return byte[]
      * @throws IOException
      * @throws NoSuchAlgorithmException
