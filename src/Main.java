@@ -131,13 +131,13 @@ public class Main {
         } else {
             // A commit exists so we have to deserialise it and get the list it has
             // and then append that commit to it then use that as the list for this commit
-
             Commit prevCommit = _prevCommit.get();
+            byte[] prevCommitHash = prevCommit.hash();
 
             // Grab the previous commits previous hashes, then add the previous commit to the list
             // as this would be the previous hash list for the current commit
             List<byte[]> parentHashes = prevCommit.parentHashes;
-            parentHashes.add(prevCommit.treeHash);
+            parentHashes.add(prevCommitHash);
 
             Commit commit = createCommit(message, root, parentHashes);
             commitHash = objStore.store(commit);
@@ -165,7 +165,20 @@ public class Main {
 
     }
 
-    public static void log() {
+    public static void log() throws IOException {
+        ObjectStore objStore = new ObjectStore();
+        HeadInfo head = resolveHead(objStore);
+        if (head.commit().isEmpty()) {
+            System.out.println("No commit has happened yet");
+            return;
+        }
+
+        Commit commit = head.commit().get();
+
+        for (byte[] b : commit.parentHashes) {
+            Commit otherCommit = (Commit) objStore.load(b).get();
+            System.out.println(otherCommit.message);
+        }
 
     }
 

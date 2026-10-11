@@ -31,7 +31,7 @@ public class Commit extends JitObject {
     private Author author;
     private Committer committer;
 
-    private String message;
+    public String message;
 
     private Commit(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author, String message) {
         this.treeHash = treeHash;
@@ -86,10 +86,7 @@ public class Commit extends JitObject {
         // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
         // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
-        System.out.println("content length: " + content.length);
-
         Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 6);
-        System.out.println(list.size());
         byte[] _aname = list.poll();
         byte[] _aemail = list.poll();
         byte[] _cname = list.poll();
@@ -97,15 +94,10 @@ public class Commit extends JitObject {
         byte[] _message = list.poll();
 
         String authorName = new String(_aname, JitObject.utf);
-        System.out.println(authorName);
         String authorEmail = new String(_aemail, JitObject.utf);
-        System.out.println(authorEmail);
         String committerName = new String(_cname, JitObject.utf);
-        System.out.println(committerName);
         String committerEmail = new String(_cemail, JitObject.utf);
-        System.out.println(committerEmail);
         String message = new String(_message, JitObject.utf);
-        System.out.println(message.trim());
 
         byte[] timeHashLength = list.poll();
 
@@ -137,8 +129,6 @@ public class Commit extends JitObject {
             parentHashes.add(parentHash);
             parentIdx += JitObject.HASH_LENGTH;
         }
-
-        System.out.println(length);
 
         return new Commit(treeHash, parentHashes, committer, author, message);
     }
