@@ -71,7 +71,7 @@ public abstract class JitObject {
             }
         }
 
-        if (limit != 0 && prev < source.length) {
+        if (prev <= source.length) {
             list.offer(Arrays.copyOfRange(source, prev, source.length));
         }
 

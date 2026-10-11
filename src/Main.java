@@ -1,19 +1,24 @@
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import objects.Tree;
 import objects.Tree.TreeEntry;
@@ -23,6 +28,8 @@ import objects.JitObject;
 import components.Index;
 import components.ObjectStore;
 import components.Status;
+import entities.Author;
+import entities.Committer;
 
 public class Main {
     private static final String INIT = "init";
@@ -30,6 +37,7 @@ public class Main {
     private static final String STATUS = "status";
     private static final String PULL = "pull";
     private static final String COMMIT = "commit";
+    private static final String LOG = "log";
 
     private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
 
@@ -45,6 +53,11 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException {
         if (args.length == 0)
             EXIT_FAILURE("Provide more arguments");
+
+        if (args[0].equals(INIT)) {
+            init();
+            return;
+        }
 
         if (!Files.exists(JIT))
             EXIT_FAILURE("fatal: not a jit repository (do jit init)");
@@ -70,6 +83,7 @@ public class Main {
 
                     commit(args[2]);
                 }
+                case LOG -> log();
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
         } catch (Exception e) {
@@ -77,14 +91,15 @@ public class Main {
         }
     }
 
-    public static Commit createCommit(String message, byte[] treeHash) {
+    public static Commit createCommit(String message, byte[] treeHash, List<byte[]> parentHashes) {
         // Creating a commit is done by given the tree hash we have the contents from that
         // but we also need to have a list of the previous commits relative to this one
         // we can do that by 
-        ObjectStore objStore = new ObjectStore();
-        Index index = new Index(objStore);
 
-        return null;
+        Author author = new Author("zain", "zainahmed@gmail.com", Instant.now());
+        Committer committer = new Committer("zain", "zainahmed@gmail.com", Instant.now());
+
+        return Commit.of(treeHash, parentHashes, committer, author, message);
     }
 
     public static void commit(String message) throws IOException, NoSuchAlgorithmException {
@@ -102,6 +117,8 @@ public class Main {
         Optional<String> _branch = head.branch();
         Optional<Commit> _prevCommit = head.commit();
 
+        byte[] commitHash;
+
         if (_prevCommit.isEmpty()) {
             // An empty commit means this is the first commit, so there is no 
             // commit list we have to construct for this commit, this means
@@ -109,9 +126,8 @@ public class Main {
 
             List<byte[]> parentHashes = new ArrayList<>();
 
-            Commit commit = Commit.of(root, parentHashes, null, null, message);
-
-            objStore.store(commit);
+            Commit commit = createCommit(message, root, parentHashes);
+            commitHash = objStore.store(commit);
         } else {
             // A commit exists so we have to deserialise it and get the list it has
             // and then append that commit to it then use that as the list for this commit
@@ -123,27 +139,33 @@ public class Main {
             List<byte[]> parentHashes = prevCommit.parentHashes;
             parentHashes.add(prevCommit.treeHash);
 
-            Commit commit = Commit.of(root, parentHashes, null, null, message);
-
-            objStore.store(commit);
+            Commit commit = createCommit(message, root, parentHashes);
+            commitHash = objStore.store(commit);
         }
 
         if (_branch.isEmpty()) {
             // Detatched HEAD, store in the HEAD file directly the commit hash
-            Files.write(JIT.resolve("HEAD"), root);
+            Files.writeString(JIT.resolve("HEAD"), HexFormat.of().formatHex(commitHash));
         } else {
             // Undetatched, meaning it is pointing to the tip of a branch stored
             // in head, so store the current hash to where it is pointing to
             byte[] HEAD = Files.readAllBytes(JIT.resolve("HEAD"));
             String stringHead = new String(HEAD, JitObject.utf);
             String refsPath = stringHead.substring(5);
-            Path _path = Path.of(refsPath);
+            Path _path = JIT.resolve(Path.of(refsPath));
+            // May be the first commit, meaning the branch file does not exist ('master' in 'refs/heads/master')
+            if (!Files.exists(_path))
+                Files.createFile(_path);
 
-            Files.write(_path, root);
+            Files.writeString(_path, HexFormat.of().formatHex(commitHash));
         }
     }
 
     public static void pull() {
+
+    }
+
+    public static void log() {
 
     }
 
@@ -208,7 +230,9 @@ public class Main {
         if (stringHead.substring(0, 3).equals("ref")) {
             // ref: refs/heads/master
             String refsPath = stringHead.substring(5);
-            Path _path = Path.of(refsPath);
+            Path _path = JIT.resolve(Path.of(refsPath));
+
+            System.out.println(_path);
 
             int idx = stringHead.lastIndexOf("/");
             String branch = stringHead.substring(idx + 1);
@@ -217,8 +241,9 @@ public class Main {
 
             // The file being empty means that this is the first commit, meaning there is a branch
             // due to default 'master' but no commit to refer to so we say its empty
-            if (!Files.exists(_path))
+            if (!Files.exists(_path)) {
                 return new HeadInfo(Optional.of(branch), Optional.empty());
+            }
 
             // Reads the hash stored in the master file that was pointed to
             // by HEAD then uses that hash to go into objects and find
@@ -226,7 +251,9 @@ public class Main {
             // file points to the commit currently on, then we go to the 
             // commit treehash via commit.treeHash which then would be a tree
             // so an actual hierarchy of files/folders
-            JitObject object = objStore.load(Files.readAllBytes(_path)).get();
+
+            byte[] hash = HexFormat.of().parseHex(Files.readString(_path).trim());
+            JitObject object = objStore.load(hash).get();
             Commit commit = (Commit) object;
             return new HeadInfo(Optional.of(branch), Optional.of(commit));
         }
@@ -412,8 +439,18 @@ public class Main {
         try {
             Files.createDirectory(JIT);
         } catch (FileAlreadyExistsException e) {
-            Path cur = Path.of("").toAbsolutePath();
-            EXIT_FAILURE(String.format(".jit already exists in %s\n", cur.toString()));
+            try (Stream<Path> paths = Files.walk(JIT)) {
+                paths.sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException a) {
+                                throw new UncheckedIOException(a);
+                            }
+                        });
+            }
+            System.out.println("Re-initialised ./jit");
+            Files.createDirectory(JIT);
         }
 
         Files.createDirectory(JIT.resolve("objects"));

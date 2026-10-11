@@ -70,7 +70,6 @@ public class Commit extends JitObject {
         outPrim.writeLong(committer.time().getEpochSecond());
         out.write(treeHash);
         outPrim.writeInt(parentHashes.size());
-        out.write(0);
 
         for (int i = 0; i < parentHashes.size(); i++) {
             byte[] parentHash = parentHashes.get(i);
@@ -81,31 +80,39 @@ public class Commit extends JitObject {
     }
 
     public static Commit parseContent(byte[] content) {
-        // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]0<list of parent hashes>
+        // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]<list of parent hashes>
         // use +20 bytes to read the next hash
 
         // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
         // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
-        Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 5);
+        System.out.println("content length: " + content.length);
 
+        Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 6);
+        System.out.println(list.size());
         byte[] _aname = list.poll();
         byte[] _aemail = list.poll();
         byte[] _cname = list.poll();
         byte[] _cemail = list.poll();
         byte[] _message = list.poll();
 
+        String authorName = new String(_aname, JitObject.utf);
+        System.out.println(authorName);
+        String authorEmail = new String(_aemail, JitObject.utf);
+        System.out.println(authorEmail);
+        String committerName = new String(_cname, JitObject.utf);
+        System.out.println(committerName);
+        String committerEmail = new String(_cemail, JitObject.utf);
+        System.out.println(committerEmail);
+        String message = new String(_message, JitObject.utf);
+        System.out.println(message.trim());
+
         byte[] timeHashLength = list.poll();
-        byte[] _parentHashes = list.poll();
 
         byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
         byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2 * Long.BYTES);
 
-        String authorName = new String(_aname, JitObject.utf);
-        String authorEmail = new String(_aemail, JitObject.utf);
-        String committerName = new String(_cname, JitObject.utf);
-        String committerEmail = new String(_cemail, JitObject.utf);
-        String message = new String(_message, JitObject.utf);
+        //String authorName = new String(_aname, JitObject.utf);
 
         Instant authorTime = Instant.ofEpochSecond(ByteBuffer.wrap(_authorTime).getLong());
         Instant committerTime = Instant.ofEpochSecond(ByteBuffer.wrap(_committerTime).getLong());
@@ -115,7 +122,10 @@ public class Commit extends JitObject {
 
         byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES, 2 * Long.BYTES + JitObject.HASH_LENGTH);
         byte[] _length = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES + JitObject.HASH_LENGTH,
-                timeHashLength.length);
+                2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES);
+
+        byte[] _parentHashes = Arrays.copyOfRange(timeHashLength,
+                2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES, timeHashLength.length);
 
         int length = ByteBuffer.wrap(_length).getInt();
 
@@ -127,6 +137,8 @@ public class Commit extends JitObject {
             parentHashes.add(parentHash);
             parentIdx += JitObject.HASH_LENGTH;
         }
+
+        System.out.println(length);
 
         return new Commit(treeHash, parentHashes, committer, author, message);
     }

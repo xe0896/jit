@@ -38,7 +38,6 @@ public class Tree extends JitObject {
 
     public static Map<String, byte[]> flattenTree(Tree tree) {
         Map<String, byte[]> map = new HashMap<>();
-
         for (TreeEntry entry : tree.entries) {
             map.put(entry.path(), entry.hash());
         }
@@ -56,9 +55,9 @@ public class Tree extends JitObject {
         byte[] source = payload;
 
         while (cursor < payload.length) {
-            Deque<byte[]> list1 = JitObject.split(source, (byte) ' ', 0, 1);
+            Deque<byte[]> list1 = JitObject.split(source, (byte) ' ', 0, 2);
             byte[] _mode = list1.poll();
-            Deque<byte[]> list2 = JitObject.split(list1.poll(), (byte) 0, 0, 1);
+            Deque<byte[]> list2 = JitObject.split(list1.poll(), (byte) 0, 0, 2);
             byte[] _name = list2.poll();
             byte[] hash = Arrays.copyOfRange(list2.poll(), 0, HASH_LENGTH);
 
