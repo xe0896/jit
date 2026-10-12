@@ -6,6 +6,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +48,7 @@ public class Main {
     public static final String RED = "\u001B[31m";
     public static final String GREEN = "\u001B[32m";
     public static final String RESET = "\u001B[0m";
+    public static final String ORANGE = "\u001B[38;5;214m";
 
     record HeadInfo(Optional<String> branch, Optional<Commit> commit) {
     }
@@ -103,6 +106,7 @@ public class Main {
     }
 
     public static void commit(String message) throws IOException, NoSuchAlgorithmException {
+        System.out.println(message);
         // When we commit that would make the HEAD point to this new commit, 
         // we need to take a snapshot of the current index
         ObjectStore objStore = new ObjectStore();
@@ -165,7 +169,29 @@ public class Main {
 
     }
 
-    public static void log() throws IOException {
+    public static void logPrinter(StringBuilder sb, Commit commit) throws NoSuchAlgorithmException, IOException {
+        sb.append(ORANGE);
+        sb.append("commit ");
+        sb.append(HexFormat.of().formatHex(commit.hash()));
+        sb.append(RESET);
+        sb.append('\n');
+        sb.append("Author: ");
+        sb.append(commit.author.name());
+        sb.append(" <");
+        sb.append(commit.author.email());
+        sb.append('>');
+        sb.append('\n');
+        sb.append("Date:   ");
+        sb.append(DateTimeFormatter
+                .ofPattern("dd MMM yyyy, HH:mm:ss")
+                .withZone(ZoneId.systemDefault())
+                .format(commit.author.time()));
+        sb.append("\n\n");
+        sb.append("     " + commit.message);
+        sb.append("\n\n");
+    }
+
+    public static void log() throws IOException, NoSuchAlgorithmException {
         ObjectStore objStore = new ObjectStore();
         HeadInfo head = resolveHead(objStore);
         if (head.commit().isEmpty()) {
@@ -173,13 +199,21 @@ public class Main {
             return;
         }
 
+        StringBuilder sb = new StringBuilder();
+
         Commit commit = head.commit().get();
 
-        for (byte[] b : commit.parentHashes) {
+        logPrinter(sb, commit);
+
+        List<byte[]> parentHashes = commit.parentHashes;
+
+        for (int i = parentHashes.size() - 1; i >= 0; i--) {
+            byte[] b = parentHashes.get(i);
             Commit otherCommit = (Commit) objStore.load(b).get();
-            System.out.println(otherCommit.message);
+            logPrinter(sb, otherCommit);
         }
 
+        System.out.println(sb);
     }
 
     public static void EXIT_FAILURE(String message) {
@@ -244,8 +278,6 @@ public class Main {
             // ref: refs/heads/master
             String refsPath = stringHead.substring(5);
             Path _path = JIT.resolve(Path.of(refsPath));
-
-            System.out.println(_path);
 
             int idx = stringHead.lastIndexOf("/");
             String branch = stringHead.substring(idx + 1);

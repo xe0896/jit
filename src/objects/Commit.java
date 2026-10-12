@@ -28,8 +28,8 @@ public class Commit extends JitObject {
     // of all parents, having a hash that points to each is better.
     public List<byte[]> parentHashes;
 
-    private Author author;
-    private Committer committer;
+    public Author author;
+    public Committer committer;
 
     public String message;
 
