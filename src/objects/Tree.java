@@ -12,7 +12,7 @@ import java.util.Map;
 // A tree is another way to say folder, that can point to a blob or another tree
 public class Tree extends JitObject {
     private static final String TYPE = "tree";
-    private final List<TreeEntry> entries;
+    public final List<TreeEntry> entries;
 
     private Tree(List<TreeEntry> entries) {
         this.entries = entries;

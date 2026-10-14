@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.stream.Stream;
 
 import objects.Tree;
@@ -108,9 +109,9 @@ public class Main {
         return Commit.of(treeHash, parentHashes, committer, author, message);
     }
 
-    public static String createBranch(String branch) throws IOException {
-        Files.createFile(JIT.resolve(Path.of("refs/heads").resolve(branch)));
-        return branch;
+    public static void createBranch(String branch) throws IOException {
+        Path HEAD = JIT.resolve("HEAD");
+        Files.writeString(HEAD, "ref: refs/heads/" + branch);
     }
 
     public static void gotoCommit(byte[] commitHash) throws IOException {
@@ -131,6 +132,9 @@ public class Main {
 
         Path branches = JIT.resolve("refs/heads");
 
+        if (!Files.exists(JIT.resolve(Path.of("refs/heads").resolve(branch))))
+            EXIT_FAILURE(String.format("Branch '%s' does not exist", branch));
+
         ObjectStore objStore = new ObjectStore();
         Index index = new Index(objStore);
 
@@ -138,22 +142,73 @@ public class Main {
             for (Path p : stream.toList()) {
                 String pathName = p.getFileName().toString();
                 if (branch.equals(pathName)) {
-
+                    System.out.println(p);
                     String hex = Files.readString(p);
+                    System.out.println(hex);
                     byte[] hash = HexFormat.of().parseHex(hex);
 
                     Optional<JitObject> object = objStore.load(hash);
                     if (object.isEmpty())
-                        EXIT_FAILURE("Hash stored in the branch file does not exist, potential corruption");
+                        EXIT_FAILURE("Hash stored in the branch file does not exist, possible corruption");
 
                     Commit commit = (Commit) object.get();
                     byte[] commitTreeHash = commit.treeHash;
+
+                    treeHashPrint(commitTreeHash);
 
                     // Given this tree hash and references to other trees as well as blobs
                     // populate the working directory
 
                     System.out.println(String.format("Switch to branch '%s'", branch));
                     Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
+                }
+            }
+        }
+    }
+
+    public static void treeHashPrint(byte[] hash) throws IOException {
+        ObjectStore objStore = new ObjectStore();
+
+        Optional<JitObject> _obj = objStore.load(hash);
+
+        if (_obj.isEmpty())
+            EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
+
+        JitObject obj = _obj.get();
+
+        if (!(obj instanceof Tree tree)) {
+            // Compiler does not know that EXIT_FAILURE is a [[noreturn]] function
+            EXIT_FAILURE("Provided initial hash must be a 'tree' hash");
+
+        } else {
+            Deque<Tree> stack = new ArrayDeque<>();
+            stack.push(tree);
+
+            while (!stack.isEmpty()) {
+                Tree cur = stack.pop();
+
+                List<TreeEntry> list = cur.entries;
+
+                for (TreeEntry entry : list) {
+                    if (entry.mode() != 040000) {
+                        // Directory
+                        System.out.println(entry.path());
+                    } else {
+                        // File
+                        byte[] dirHash = entry.hash();
+                        Optional<JitObject> _x = objStore.load(dirHash);
+                        if (_x.isEmpty())
+                            EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
+
+                        JitObject x = _x.get();
+
+                        if (!(x instanceof Tree parentTree)) {
+                            // Compiler does not know that EXIT_FAILURE is a [[noreturn]] function
+                            EXIT_FAILURE("Provided hash must be a 'tree' hash");
+                        } else {
+                            stack.push(parentTree);
+                        }
+                    }
                 }
             }
         }
@@ -167,8 +222,7 @@ public class Main {
             // Either creating and going to that new branch or is going
             // to a detatched state by going to a particular commit
             if (args[0].equals("-c")) {
-                String branch = createBranch(args[1]);
-                //gotoBranch(branch);
+                createBranch(args[1]);
             } else {
                 // Must be going to a detatched state
                 gotoCommit(args[0].getBytes(StandardCharsets.UTF_8));
