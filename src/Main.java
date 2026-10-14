@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -40,6 +41,7 @@ public class Main {
     private static final String PULL = "pull";
     private static final String COMMIT = "commit";
     private static final String LOG = "log";
+    private static final String SWITCH = "switch";
 
     private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
 
@@ -86,6 +88,7 @@ public class Main {
 
                     commit(args[2]);
                 }
+                case SWITCH -> Switch(Arrays.copyOfRange(args, 1, args.length));
                 case LOG -> log();
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
@@ -103,6 +106,76 @@ public class Main {
         Committer committer = new Committer("zain", "zainahmed@gmail.com", Instant.now());
 
         return Commit.of(treeHash, parentHashes, committer, author, message);
+    }
+
+    public static String createBranch(String branch) throws IOException {
+        Files.createFile(JIT.resolve(Path.of("refs/heads").resolve(branch)));
+        return branch;
+    }
+
+    public static void gotoCommit(byte[] commitHash) throws IOException {
+
+    }
+
+    public static void switchBranch(String branch) throws IOException {
+        Path HEAD = JIT.resolve("HEAD");
+
+        String stored = Files.readString(HEAD);
+
+        int idx = stored.lastIndexOf("/");
+
+        String storedBranch = stored.substring(idx + 1, stored.length());
+
+        if (branch.equals(storedBranch))
+            EXIT_FAILURE(String.format("Branch '%s' is already toggled", branch));
+
+        Path branches = JIT.resolve("refs/heads");
+
+        ObjectStore objStore = new ObjectStore();
+        Index index = new Index(objStore);
+
+        try (var stream = Files.list(branches)) {
+            for (Path p : stream.toList()) {
+                String pathName = p.getFileName().toString();
+                if (branch.equals(pathName)) {
+
+                    String hex = Files.readString(p);
+                    byte[] hash = HexFormat.of().parseHex(hex);
+
+                    Optional<JitObject> object = objStore.load(hash);
+                    if (object.isEmpty())
+                        EXIT_FAILURE("Hash stored in the branch file does not exist, potential corruption");
+
+                    Commit commit = (Commit) object.get();
+                    byte[] commitTreeHash = commit.treeHash;
+
+                    // Given this tree hash and references to other trees as well as blobs
+                    // populate the working directory
+
+                    System.out.println(String.format("Switch to branch '%s'", branch));
+                    Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
+                }
+            }
+        }
+    }
+
+    public static void Switch(String[] args) throws IOException {
+        if (args.length == 1) {
+            // Switching to an existing branch
+            switchBranch(args[0]);
+        } else if (args.length == 2) {
+            // Either creating and going to that new branch or is going
+            // to a detatched state by going to a particular commit
+            if (args[0].equals("-c")) {
+                String branch = createBranch(args[1]);
+                //gotoBranch(branch);
+            } else {
+                // Must be going to a detatched state
+                gotoCommit(args[0].getBytes(StandardCharsets.UTF_8));
+            }
+        } else {
+            EXIT_FAILURE("jit commit only allows 2 arguments");
+        }
     }
 
     public static void commit(String message) throws IOException, NoSuchAlgorithmException {
@@ -167,28 +240,6 @@ public class Main {
 
     public static void pull() {
 
-    }
-
-    public static void logPrinter(StringBuilder sb, Commit commit) throws NoSuchAlgorithmException, IOException {
-        sb.append(ORANGE);
-        sb.append("commit ");
-        sb.append(HexFormat.of().formatHex(commit.hash()));
-        sb.append(RESET);
-        sb.append('\n');
-        sb.append("Author: ");
-        sb.append(commit.author.name());
-        sb.append(" <");
-        sb.append(commit.author.email());
-        sb.append('>');
-        sb.append('\n');
-        sb.append("Date:   ");
-        sb.append(DateTimeFormatter
-                .ofPattern("dd MMM yyyy, HH:mm:ss")
-                .withZone(ZoneId.systemDefault())
-                .format(commit.author.time()));
-        sb.append("\n\n");
-        sb.append("     " + commit.message);
-        sb.append("\n\n");
     }
 
     public static void log() throws IOException, NoSuchAlgorithmException {
@@ -406,6 +457,28 @@ public class Main {
 
         String message = statusPrint(branch, staged, unstaged, untracked);
         System.out.println(message);
+    }
+
+    public static void logPrinter(StringBuilder sb, Commit commit) throws NoSuchAlgorithmException, IOException {
+        sb.append(ORANGE);
+        sb.append("commit ");
+        sb.append(HexFormat.of().formatHex(commit.hash()));
+        sb.append(RESET);
+        sb.append('\n');
+        sb.append("Author: ");
+        sb.append(commit.author.name());
+        sb.append(" <");
+        sb.append(commit.author.email());
+        sb.append('>');
+        sb.append('\n');
+        sb.append("Date:   ");
+        sb.append(DateTimeFormatter
+                .ofPattern("dd MMM yyyy, HH:mm:ss")
+                .withZone(ZoneId.systemDefault())
+                .format(commit.author.time()));
+        sb.append("\n\n");
+        sb.append("     " + commit.message);
+        sb.append("\n\n");
     }
 
     public static void statusPrinter(StringBuilder sb, String ANSI, String text, String path) {
