@@ -109,9 +109,41 @@ public class Main {
         return Commit.of(treeHash, parentHashes, committer, author, message);
     }
 
-    public static void createBranch(String branch) throws IOException {
-        Path HEAD = JIT.resolve("HEAD");
-        Files.writeString(HEAD, "ref: refs/heads/" + branch);
+    // Given a tree hash populate the working directory with it, but ensure we only replace
+    // stuff that is new, if it already exists then skip it
+    public static void populate(byte[] treeHash) throws IOException {
+        // If the working directory doesn't reflect the index then there are some unstaged changes
+        List<Status> staged = new ArrayList<>();
+        List<Status> unstaged = new ArrayList<>();
+        List<Status> untracked = new ArrayList<>();
+
+        changes(staged, unstaged, untracked); // Grab the staged, unstaged and untracked changes
+    }
+
+    public static void createBranch(String branch) throws IOException, NoSuchAlgorithmException {
+        ObjectStore objStore = new ObjectStore();
+        HeadInfo head = resolveHead(objStore);
+
+        String curBranch = head.branch()
+                .orElseThrow(() -> new UnsupportedOperationException("Not considering no branch cases"));
+
+        Commit curCommit = head.commit()
+                .orElseThrow(() -> new UnsupportedOperationException("Not considering no commit cases"));
+
+        Path newBranchLocation = JIT.resolve(Path.of("refs/heads/" + branch));
+        if (Files.exists(newBranchLocation))
+            throw new IllegalArgumentException("File already exists");
+
+        Files.createFile(newBranchLocation);
+
+        byte[] curCommitBytes = curCommit.hash();
+
+        String hexHash = HexFormat.of().formatHex(curCommitBytes);
+
+        Files.writeString(newBranchLocation, hexHash);
+        Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
+
+        System.out.println(String.format("Switching from branch '%s' to branch '%s'", curBranch, branch));
     }
 
     public static void gotoCommit(byte[] commitHash) throws IOException {
@@ -132,7 +164,7 @@ public class Main {
 
         Path branches = JIT.resolve("refs/heads");
 
-        if (!Files.exists(JIT.resolve(Path.of("refs/heads").resolve(branch))))
+        if (!Files.exists(branches.resolve(branch)))
             EXIT_FAILURE(String.format("Branch '%s' does not exist", branch));
 
         ObjectStore objStore = new ObjectStore();
@@ -214,7 +246,8 @@ public class Main {
         }
     }
 
-    public static void Switch(String[] args) throws IOException {
+    public static void Switch(String[] args) throws IOException, NoSuchAlgorithmException {
+        // For creating a new branch we can re-use the index that we are diverging from
         if (args.length == 1) {
             // Switching to an existing branch
             switchBranch(args[0]);
@@ -228,7 +261,7 @@ public class Main {
                 gotoCommit(args[0].getBytes(StandardCharsets.UTF_8));
             }
         } else {
-            EXIT_FAILURE("jit commit only allows 2 arguments");
+            EXIT_FAILURE("jit switch only allows 2 arguments");
         }
     }
 
@@ -416,7 +449,8 @@ public class Main {
         return new HeadInfo(Optional.empty(), Optional.of(commit));
     }
 
-    public static void status() throws IOException {
+    public static HeadInfo changes(List<Status> staged, List<Status> unstaged, List<Status> untracked)
+            throws IOException {
         ObjectStore objStore = new ObjectStore();
         Index index = new Index(objStore);
 
@@ -453,10 +487,6 @@ public class Main {
         }
 
         // Map<String, TreeEntry> indexMap = index.entries;
-
-        List<Status> staged = new ArrayList<>();
-        List<Status> unstaged = new ArrayList<>();
-        List<Status> untracked = new ArrayList<>();
 
         // Staged changes: compares head with index, (added, modified, deleted)
         // Unstaged changes: compares index with working, (modified, deleted)
@@ -507,6 +537,15 @@ public class Main {
             }
         }
 
+        return head;
+    }
+
+    public static void status() throws IOException {
+        List<Status> staged = new ArrayList<>();
+        List<Status> unstaged = new ArrayList<>();
+        List<Status> untracked = new ArrayList<>();
+
+        HeadInfo head = changes(staged, unstaged, untracked);
         Optional<String> branch = head.branch();
 
         String message = statusPrint(branch, staged, unstaged, untracked);
@@ -536,10 +575,11 @@ public class Main {
     }
 
     public static void statusPrinter(StringBuilder sb, String ANSI, String text, String path) {
+        String whitespace = " ";
         sb.append("      ");
         sb.append(ANSI);
         sb.append(text);
-        sb.append("  ");
+        sb.append(whitespace.repeat(11 - text.length()));
         sb.append(path);
         sb.append(RESET);
         sb.append("\n");
@@ -565,13 +605,13 @@ public class Main {
             for (Status status : staged) {
                 switch (status) {
                     case Status.Added a -> {
-                        statusPrinter(stage, GREEN, "added: ", a.path());
+                        statusPrinter(stage, GREEN, "added:", a.path());
                     }
                     case Status.Deleted a -> {
-                        statusPrinter(stage, GREEN, "deleted: ", a.path());
+                        statusPrinter(stage, GREEN, "deleted:", a.path());
                     }
                     case Status.Modified a -> {
-                        statusPrinter(stage, GREEN, "modified", a.path());
+                        statusPrinter(stage, GREEN, "modified:", a.path());
                     }
                     default -> EXIT_FAILURE("Status incorrect enum");
                 }
@@ -582,13 +622,13 @@ public class Main {
             for (Status status : unstaged) {
                 switch (status) {
                     case Status.Untracked a -> {
-                        statusPrinter(unstage, RED, "untracked: ", a.path());
+                        statusPrinter(unstage, RED, "untracked:", a.path());
                     }
                     case Status.Deleted a -> {
-                        statusPrinter(unstage, RED, "deleted: ", a.path());
+                        statusPrinter(unstage, RED, "deleted:", a.path());
                     }
                     case Status.Modified a -> {
-                        statusPrinter(unstage, RED, "modified: ", a.path());
+                        statusPrinter(unstage, RED, "modified:", a.path());
                     }
                     default -> EXIT_FAILURE("Status incorrect enum");
                 }
@@ -598,7 +638,7 @@ public class Main {
             untrack.append("Untracked files:\n");
             for (Status status : untracked) {
                 Status.Untracked a = (Status.Untracked) status;
-                statusPrinter(untrack, RED, "untracked: ", a.path());
+                statusPrinter(untrack, RED, "untracked:", a.path());
             }
         }
 

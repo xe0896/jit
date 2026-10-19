@@ -112,14 +112,7 @@ public class Index {
         }
     }
 
-    /** 
-     * Builds the tree hierarchy represented by the current index
-     * 
-     * @return byte[] content hash of the root, should point to a tree
-     * @throws IOException
-     * @throws NoSuchAlgorithmException
-     */
-    public byte[] buildTree() throws IOException, NoSuchAlgorithmException {
+    private Map<String, List<TreeEntry>> generateFileMap() {
         Map<String, List<TreeEntry>> map = new HashMap<>();
         for (String path : entries.keySet()) {
             // For each path so src/main.c
@@ -142,6 +135,20 @@ public class Index {
                 list.add(entries.get(path));
             }
         }
+
+        return map;
+
+    }
+
+    /** 
+     * Builds the tree hierarchy represented by the current index
+     * 
+     * @return byte[] content hash of the root, should point to a tree
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     */
+    public byte[] buildTree() throws IOException, NoSuchAlgorithmException {
+        Map<String, List<TreeEntry>> map = generateFileMap();
 
         // Consider a repository that only has a folder in the root so src/ and no file
         // meaning there would be no instance of "" and therefore the root would be null
