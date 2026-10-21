@@ -36,6 +36,7 @@ import entities.Author;
 import entities.Committer;
 
 public class Main {
+    // Supported operations
     private static final String INIT = "init";
     private static final String ADD = "add";
     private static final String STATUS = "status";
@@ -43,11 +44,13 @@ public class Main {
     private static final String COMMIT = "commit";
     private static final String LOG = "log";
     private static final String SWITCH = "switch";
+    private static final String BRANCH = "branch";
 
+    // List of things to ignore in the root of a jit directory
     private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
-
     public static final Path JIT = Path.of(".jit");
 
+    // ANSI color codes, helpful for outputting for stuff like 'jit status'
     public static final String RED = "\u001B[31m";
     public static final String GREEN = "\u001B[32m";
     public static final String RESET = "\u001B[0m";
@@ -91,11 +94,44 @@ public class Main {
                 }
                 case SWITCH -> Switch(Arrays.copyOfRange(args, 1, args.length));
                 case LOG -> log();
+                case BRANCH -> branch();
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    // List the brnaches in this repository
+    public static void branch() throws IOException {
+        ObjectStore objStore = new ObjectStore();
+        Path branches = JIT.resolve("refs/heads");
+        HeadInfo head = resolveHead(objStore);
+
+        if (head.branch().isEmpty())
+            throw new UnsupportedOperationException("Undetatched heads are going to get a revamp");
+
+        String curBranch = head.branch().get();
+
+        StringBuilder sb = new StringBuilder();
+
+        try (var stream = Files.list(branches)) {
+            for (Path p : stream.toList()) {
+                String fileName = p.getFileName().toString();
+                if (fileName.equals(curBranch)) {
+                    sb.append(" * ");
+                    sb.append(GREEN);
+                    sb.append(curBranch);
+                    sb.append(RESET);
+                } else {
+                    sb.append("   ");
+                    sb.append(fileName);
+                }
+                sb.append("\n");
+            }
+        }
+
+        System.out.println(sb);
     }
 
     public static Commit createCommit(String message, byte[] treeHash, List<byte[]> parentHashes) {
@@ -111,13 +147,15 @@ public class Main {
 
     // Given a tree hash populate the working directory with it, but ensure we only replace
     // stuff that is new, if it already exists then skip it
-    public static void populate(byte[] treeHash) throws IOException {
+    public static boolean populate(byte[] treeHash) throws IOException {
         // If the working directory doesn't reflect the index then there are some unstaged changes
         List<Status> staged = new ArrayList<>();
         List<Status> unstaged = new ArrayList<>();
         List<Status> untracked = new ArrayList<>();
 
         changes(staged, unstaged, untracked); // Grab the staged, unstaged and untracked changes
+
+        return unstaged.size() > 0 | untracked.size() > 0;
     }
 
     public static void createBranch(String branch) throws IOException, NoSuchAlgorithmException {
@@ -185,6 +223,10 @@ public class Main {
 
                     Commit commit = (Commit) object.get();
                     byte[] commitTreeHash = commit.treeHash;
+
+                    if (populate(commitTreeHash)) {
+                        EXIT_FAILURE("You have unstaged changes");
+                    }
 
                     treeHashPrint(commitTreeHash);
 
