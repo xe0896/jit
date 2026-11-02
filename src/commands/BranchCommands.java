@@ -5,6 +5,7 @@ import components.ObjectStore;
 import components.Status;
 import entities.HeadInfo;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,8 +27,15 @@ import static components.Repository.resolveHead;
 import static components.StatusScanner.changes;
 
 public class BranchCommands {
-    // List the brnaches in this repository
+    /**
+    * List the branches that the repository has, alongside an indicator of a star (*) and green highlight
+    * on the branch that is currently being worked on
+    *
+    * @throws IOException
+    */
     public static void branch() throws IOException {
+        // Grabs the current branch so that when we iterate over our list of branches
+        // we can compare it and make it highlighted
         ObjectStore objStore = new ObjectStore();
         Path branches = JIT.resolve("refs/heads");
         HeadInfo head = resolveHead(objStore);
@@ -36,26 +44,23 @@ public class BranchCommands {
             throw new UnsupportedOperationException("Undetatched heads are going to get a revamp");
 
         String curBranch = head.branch().get();
-
-        StringBuilder sb = new StringBuilder();
+        PrintStream out = System.out;
 
         try (var stream = Files.list(branches)) {
             for (Path p : stream.toList()) {
                 String fileName = p.getFileName().toString();
                 if (fileName.equals(curBranch)) {
-                    sb.append(" * ");
-                    sb.append(GREEN);
-                    sb.append(curBranch);
-                    sb.append(RESET);
+                    out.print(" * ");
+                    out.print(GREEN);
+                    out.print(curBranch);
+                    out.print(RESET);
                 } else {
-                    sb.append("   ");
-                    sb.append(fileName);
+                    out.print("   ");
+                    out.print(fileName);
                 }
-                sb.append("\n");
+                out.print("\n");
             }
         }
-
-        System.out.println(sb);
     }
 
     public static void Switch(String[] args) throws IOException, NoSuchAlgorithmException {
@@ -103,10 +108,8 @@ public class BranchCommands {
         System.out.println(String.format("Switching from branch '%s' to branch '%s'", curBranch, branch));
     }
 
-    public static void switchBranch(String branch) throws IOException {
-        Path HEAD = JIT.resolve("HEAD");
-
-        String stored = Files.readString(HEAD);
+    public static Path branchCheck(String branch) throws IOException {
+        String stored = Files.readString(JIT.resolve("HEAD"));
 
         int idx = stored.lastIndexOf("/");
 
@@ -120,16 +123,19 @@ public class BranchCommands {
         if (!Files.exists(branches.resolve(branch)))
             EXIT_FAILURE(String.format("Branch '%s' does not exist", branch));
 
+        return branches;
+    }
+
+    public static void switchBranch(String branch) throws IOException {
+        Path branches = branchCheck(branch);
+
         ObjectStore objStore = new ObjectStore();
-        Index index = new Index(objStore);
 
         try (var stream = Files.list(branches)) {
             for (Path p : stream.toList()) {
                 String pathName = p.getFileName().toString();
                 if (branch.equals(pathName)) {
-                    System.out.println(p);
                     String hex = Files.readString(p);
-                    System.out.println(hex);
                     byte[] hash = HexFormat.of().parseHex(hex);
 
                     Optional<JitObject> object = objStore.load(hash);
@@ -142,8 +148,6 @@ public class BranchCommands {
                     if (populate(commitTreeHash)) {
                         EXIT_FAILURE("You have unstaged changes");
                     }
-
-                    treeHashPrint(commitTreeHash);
 
                     // Given this tree hash and references to other trees as well as blobs
                     // populate the working directory

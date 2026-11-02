@@ -6,6 +6,7 @@ import entities.Author;
 import entities.Committer;
 import entities.HeadInfo;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
@@ -103,21 +104,18 @@ public class CommitCommands {
             System.out.println("No commit has happened yet");
             return;
         }
-
-        StringBuilder sb = new StringBuilder();
+        PrintStream out = System.out;
 
         Commit commit = head.commit().get();
 
-        logPrinter(sb, commit);
+        logPrinter(out, commit);
 
         List<byte[]> parentHashes = commit.parentHashes;
 
         for (int i = parentHashes.size() - 1; i >= 0; i--) {
             byte[] b = parentHashes.get(i);
             Commit otherCommit = (Commit) objStore.load(b).get();
-            logPrinter(sb, otherCommit);
+            logPrinter(out, otherCommit);
         }
-
-        System.out.println(sb);
     }
 }

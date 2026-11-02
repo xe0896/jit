@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -10,6 +11,7 @@ import static commands.CommitCommands.commit;
 import static commands.CommitCommands.log;
 import static commands.RemoteCommands.pull;
 import static commands.RemoteCommands.push;
+import static commands.RemoteCommands.remote;
 import static commands.RepositoryCommands.add;
 import static commands.RepositoryCommands.init;
 import static commands.StatusCommands.status;
@@ -65,6 +67,7 @@ public class Main {
                 case LOG -> log();
                 case BRANCH -> branch();
                 case PUSH -> push(Arrays.copyOfRange(args, 1, args.length));
+                case REMOTE -> remote(Arrays.copyOfRange(args, 1, args.length));
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
         } catch (Exception e) {

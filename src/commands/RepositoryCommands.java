@@ -4,12 +4,15 @@ import components.Index;
 import components.ObjectStore;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.ObjectInputFilter.Config;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static cli.ConsoleOutput.EXIT_FAILURE;
@@ -44,6 +47,9 @@ public class RepositoryCommands {
         Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/master");
 
         Files.createDirectory(JIT.resolve("refs").resolve("heads"));
+    }
+
+    record ConfigValue(String reference, String value) {
     }
 
     public static void add(String[] paths) throws IOException, InterruptedException, NoSuchAlgorithmException {

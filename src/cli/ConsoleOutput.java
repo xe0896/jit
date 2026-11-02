@@ -4,6 +4,8 @@ import components.ObjectStore;
 import components.Status;
 import entities.Author;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -21,6 +23,7 @@ import static commands.BranchCommands.branch;
 import static commands.CommitCommands.commit;
 import static commands.RemoteCommands.push;
 import static commands.StatusCommands.status;
+import static components.Repository.JIT;
 
 public class ConsoleOutput {
     // ANSI color codes, helpful for outputting for stuff like 'jit status'
@@ -29,98 +32,93 @@ public class ConsoleOutput {
     public static final String RESET = "\u001B[0m";
     public static final String ORANGE = "\u001B[38;5;214m";
 
-    public static String statusPrint(Optional<String> branch, List<Status> staged, List<Status> unstaged,
-            List<Status> untracked) {
+    public static void statusPrint(Optional<String> branch, Optional<Commit> commit, List<Status> staged, List<Status> unstaged,
+            List<Status> untracked) throws IOException {
 
-        StringBuilder bra = new StringBuilder();
+        String commitHash = !commit.isEmpty() ? HexFormat.of().formatHex(commit.get().treeHash) : "";
+
+        PrintStream out = System.out;
 
         if (branch.isEmpty()) {
-            bra.append("No commits yet, therefore no branch\n");
+            out.print("No commits yet, therefore no branch\n");
         } else {
-            bra.append(String.format("On branch %s\n", branch.get()));
+            out.print(String.format("On branch %s (%s)\n", branch.get(), commitHash));
         }
 
-        StringBuilder stage = new StringBuilder();
-        StringBuilder unstage = new StringBuilder();
-        StringBuilder untrack = new StringBuilder();
-
         if (!staged.isEmpty()) {
-            stage.append("Changes to be committed:\n");
+            out.print("Changes to be committed:\n");
             for (Status status : staged) {
                 switch (status) {
                     case Status.Added a -> {
-                        statusPrinter(stage, GREEN, "added:", a.path());
+                        statusPrinter(out, GREEN, "added:", a.path());
                     }
                     case Status.Deleted a -> {
-                        statusPrinter(stage, GREEN, "deleted:", a.path());
+                        statusPrinter(out, GREEN, "deleted:", a.path());
                     }
                     case Status.Modified a -> {
-                        statusPrinter(stage, GREEN, "modified:", a.path());
+                        statusPrinter(out, GREEN, "modified:", a.path());
                     }
                     default -> EXIT_FAILURE("Status incorrect enum");
                 }
             }
         }
         if (!unstaged.isEmpty()) {
-            unstage.append("Changes not staged for commit:\n");
+            out.print("Changes not staged for commit:\n");
             for (Status status : unstaged) {
                 switch (status) {
                     case Status.Untracked a -> {
-                        statusPrinter(unstage, RED, "untracked:", a.path());
+                        statusPrinter(out, RED, "untracked:", a.path());
                     }
                     case Status.Deleted a -> {
-                        statusPrinter(unstage, RED, "deleted:", a.path());
+                        statusPrinter(out, RED, "deleted:", a.path());
                     }
                     case Status.Modified a -> {
-                        statusPrinter(unstage, RED, "modified:", a.path());
+                        statusPrinter(out, RED, "modified:", a.path());
                     }
                     default -> EXIT_FAILURE("Status incorrect enum");
                 }
             }
         }
         if (!untracked.isEmpty()) {
-            untrack.append("Untracked files:\n");
+            out.print("Untracked files:\n");
             for (Status status : untracked) {
                 Status.Untracked a = (Status.Untracked) status;
-                statusPrinter(untrack, RED, "untracked:", a.path());
+                statusPrinter(out, RED, "untracked:", a.path());
             }
         }
-
-        return bra.toString() + stage.toString() + unstage.toString() + untrack.toString();
-
     }
 
-    public static void statusPrinter(StringBuilder sb, String ANSI, String text, String path) {
+    public static void statusPrinter(PrintStream out, String ANSI, String text, String path) {
         String whitespace = " ";
-        sb.append("      ");
-        sb.append(ANSI);
-        sb.append(text);
-        sb.append(whitespace.repeat(11 - text.length()));
-        sb.append(path);
-        sb.append(RESET);
-        sb.append("\n");
+        out.print("      ");
+        out.print(ANSI);
+        out.print(text);
+        out.print(whitespace.repeat(11 - text.length()));
+        out.print(path);
+        out.print(RESET);
+        out.print("\n");
     }
 
-    public static void logPrinter(StringBuilder sb, Commit commit) throws NoSuchAlgorithmException, IOException {
-        sb.append(ORANGE);
-        sb.append("commit ");
-        sb.append(HexFormat.of().formatHex(commit.hash()));
-        sb.append(RESET);
-        sb.append('\n');
-        sb.append("Author: ");
-        sb.append(commit.author.name());
-        sb.append(" <");
-        sb.append(commit.author.email());
-        sb.append('>');
-        sb.append('\n');
-        sb.append("Date:   ");
-        sb.append(DateTimeFormatter
+    public static void logPrinter(PrintStream out, Commit commit) throws NoSuchAlgorithmException, IOException {
+        out.print(ORANGE);
+        out.print("commit ");
+        out.print(HexFormat.of().formatHex(commit.hash()));
+        out.print(RESET);
+        out.print('\n');
+        out.print("Author: ");
+        out.print(commit.author.name());
+        out.print(" <");
+        out.print(commit.author.email());
+        out.print('>');
+        out.print('\n');
+        out.print("Date:   ");
+        out.print(DateTimeFormatter
                 .ofPattern("dd MMM yyyy, HH:mm:ss")
                 .withZone(ZoneId.systemDefault())
                 .format(commit.author.time()));
-        sb.append("\n\n");
-        sb.append("     " + commit.message);
-        sb.append("\n\n");
+        out.print("\n\n");
+        out.print("     " + commit.message);
+        out.print("\n\n");
     }
 
     public static void treeHashPrint(byte[] hash) throws IOException {
@@ -149,7 +147,7 @@ public class ConsoleOutput {
                 for (TreeEntry entry : list) {
                     if (entry.mode() != 040000) {
                         // Directory
-                        System.out.println(entry.path());
+                        System.out.println("Directory: " + entry.path());
                     } else {
                         // File
                         byte[] dirHash = entry.hash();
