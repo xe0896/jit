@@ -126,11 +126,26 @@ public class BranchCommands {
         return branches;
     }
 
+    /**
+    * Given a 'treeHash' populate the current working directory with the contents, ensuring it is
+    * efficient as we compare with each file and see if it is different if there was a match
+    * meaning no changes, else we need to replace it and also create folders that may also have new files
+    * @param treeHash
+    */
+    public static void populate(byte[] treeHash) {
+
+    }
+
     public static void switchBranch(String branch) throws IOException {
+        // Checks to see if the branch that is being switched to
+        // exists as well as if it is already toggled
         Path branches = branchCheck(branch);
 
         ObjectStore objStore = new ObjectStore();
 
+        // Goes through each branch to find the hash of the branch that it wants to go to
+        // by going through the content address chain and also calls 'populate' to get the
+        // current branch and replace its contents with the switched branch
         try (var stream = Files.list(branches)) {
             for (Path p : stream.toList()) {
                 String pathName = p.getFileName().toString();
@@ -145,12 +160,21 @@ public class BranchCommands {
                     Commit commit = (Commit) object.get();
                     byte[] commitTreeHash = commit.treeHash;
 
-                    if (populate(commitTreeHash)) {
+                    // Given a tree hash populate the working directory with it, but ensure we only replace
+                    // stuff that is new, if it already exists then skip it
+                    // If the working directory doesn't reflect the index then there are some unstaged changes
+                    List<Status> staged = new ArrayList<>();
+                    List<Status> unstaged = new ArrayList<>();
+                    List<Status> untracked = new ArrayList<>();
+
+                    changes(staged, unstaged, untracked); // Grab the staged, unstaged and untracked changes
+
+                    if (unstaged.size() > 0)
                         EXIT_FAILURE("You have unstaged changes");
-                    }
 
                     // Given this tree hash and references to other trees as well as blobs
                     // populate the working directory
+                    populate(commitTreeHash);
 
                     System.out.println(String.format("Switch to branch '%s'", branch));
                     Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
@@ -161,18 +185,5 @@ public class BranchCommands {
 
     public static void gotoCommit(byte[] commitHash) throws IOException {
 
-    }
-
-    // Given a tree hash populate the working directory with it, but ensure we only replace
-    // stuff that is new, if it already exists then skip it
-    public static boolean populate(byte[] treeHash) throws IOException {
-        // If the working directory doesn't reflect the index then there are some unstaged changes
-        List<Status> staged = new ArrayList<>();
-        List<Status> unstaged = new ArrayList<>();
-        List<Status> untracked = new ArrayList<>();
-
-        changes(staged, unstaged, untracked); // Grab the staged, unstaged and untracked changes
-
-        return unstaged.size() > 0;
     }
 }

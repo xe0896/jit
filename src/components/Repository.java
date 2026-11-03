@@ -1,6 +1,5 @@
 package components;
 
-import components.ObjectStore;
 import entities.HeadInfo;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,9 +8,6 @@ import java.util.HexFormat;
 import java.util.Optional;
 import objects.Commit;
 import objects.JitObject;
-
-import static commands.BranchCommands.branch;
-import static commands.CommitCommands.commit;
 
 public class Repository {
     public static final Path JIT = Path.of(".jit");

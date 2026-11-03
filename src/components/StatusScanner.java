@@ -1,8 +1,5 @@
 package components;
 
-import components.Index;
-import components.ObjectStore;
-import components.Status;
 import entities.HeadInfo;
 import java.io.IOException;
 import java.util.Arrays;
@@ -18,9 +15,6 @@ import objects.JitObject;
 import objects.Tree;
 import objects.Tree.TreeEntry;
 
-import static commands.CommitCommands.commit;
-import static commands.RepositoryCommands.add;
-import static commands.StatusCommands.status;
 import static components.Repository.resolveHead;
 import static components.WorkingDirectory.getWorkingPaths;
 

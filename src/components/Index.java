@@ -35,7 +35,7 @@ public class Index {
         this.entries = new HashMap<>();
     }
 
-    /** 
+    /**
      * Adds the provided path into the index map by reading the bytes stored in the file
      * and storing it in objects/ which must be a blob. The index file is read then
      * adds the TreeEntry then writes, not that efficient
@@ -54,7 +54,7 @@ public class Index {
         write();
     }
 
-    /** 
+    /**
      * Remove the file from the index by first taking in the entries stored already in the index file
      * then removes it from the map, then writes the map back
      * @param path
@@ -65,7 +65,7 @@ public class Index {
         write();
     }
 
-    /** 
+    /**
      * Given an already populated entries map, writes the contents into the index file, writing a list
      * would automatically add '\n' which is used to delimit when we want to read()
      * @throws IOException
@@ -89,7 +89,7 @@ public class Index {
         Files.write(INDEX_PATH, lines);
     }
 
-    /** 
+    /**
      * Reads the entries inside the current index file, and populates the entry map
      * @throws IOException
      */
@@ -140,9 +140,9 @@ public class Index {
 
     }
 
-    /** 
+    /**
      * Builds the tree hierarchy represented by the current index
-     * 
+     *
      * @return byte[] content hash of the root, should point to a tree
      * @throws IOException
      * @throws NoSuchAlgorithmException
@@ -152,7 +152,7 @@ public class Index {
 
         // Consider a repository that only has a folder in the root so src/ and no file
         // meaning there would be no instance of "" and therefore the root would be null
-        // a tree still exists though since 
+        // a tree still exists though since
         byte[] root = null;
 
         // Gets a list of directories

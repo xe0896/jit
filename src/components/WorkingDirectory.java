@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static commands.RemoteCommands.push;
-
 public class WorkingDirectory {
     // List of things to ignore in the root of a jit directory
     private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
