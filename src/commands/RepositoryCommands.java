@@ -16,9 +16,12 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static cli.ConsoleOutput.EXIT_FAILURE;
+import static commands.RemoteCommands.configInit;
 import static components.Repository.JIT;
 
 public class RepositoryCommands {
+    private static final String startingBranch = "master";
+
     public static void init() throws IOException {
         // Assuming it is a sensible user, not handling errors with regarding to corrupted .jit structure
         try {
@@ -44,7 +47,9 @@ public class RepositoryCommands {
         Files.createFile(JIT.resolve("HEAD"));
         Files.createFile(JIT.resolve("config"));
 
-        Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/master");
+        configInit(startingBranch);
+
+        Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + startingBranch);
 
         Files.createDirectory(JIT.resolve("refs").resolve("heads"));
     }

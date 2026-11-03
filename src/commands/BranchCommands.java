@@ -38,12 +38,9 @@ public class BranchCommands {
         // we can compare it and make it highlighted
         ObjectStore objStore = new ObjectStore();
         Path branches = JIT.resolve("refs/heads");
-        HeadInfo head = resolveHead(objStore);
 
-        if (head.branch().isEmpty())
-            throw new UnsupportedOperationException("Undetatched heads are going to get a revamp");
+        String curBranch = curBranch(objStore);
 
-        String curBranch = head.branch().get();
         PrintStream out = System.out;
 
         try (var stream = Files.list(branches)) {
@@ -61,6 +58,16 @@ public class BranchCommands {
                 out.print("\n");
             }
         }
+    }
+
+    public static String curBranch(ObjectStore objStore) throws IOException {
+        HeadInfo head = resolveHead(objStore);
+        if (head.branch().isEmpty())
+            throw new UnsupportedOperationException("Undetatched heads are going to get a revamp");
+
+        String curBranch = head.branch().get();
+
+        return curBranch;
     }
 
     public static void Switch(String[] args) throws IOException, NoSuchAlgorithmException {

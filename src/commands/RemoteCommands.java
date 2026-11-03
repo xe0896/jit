@@ -1,11 +1,13 @@
 package commands;
 
 import static cli.ConsoleOutput.EXIT_FAILURE;
+import static commands.BranchCommands.curBranch;
 import static components.Repository.JIT;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +16,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import components.ObjectStore;
 
 public class RemoteCommands {
     public static void pull() {
@@ -32,7 +37,7 @@ public class RemoteCommands {
 
     }
 
-    public static void writeConfig(Map<String, List<ConfigValue>> map) throws IOException {
+    public static void writeConfig(Map<String, Map<String, String>> map) throws IOException {
         Path config = JIT.resolve("config");
         if (!Files.exists(config))
             EXIT_FAILURE("No config file found (corrupted)");
@@ -40,12 +45,14 @@ public class RemoteCommands {
         try (BufferedWriter writer = Files.newBufferedWriter(config)) {
             for (var entry : map.entrySet()) {
                 String key = entry.getKey();
-                List<ConfigValue> values = entry.getValue();
+                Map<String, String> values = entry.getValue();
 
                 writer.write(String.format("[%s]\n", key));
 
-                for (ConfigValue cv : values) {
-                    writer.write(String.format("	%s = %s\n", cv.reference(), cv.value()));
+                for(var e : values.entrySet()) {
+                    String reference = e.getKey();
+                    String value = e.getValue();
+                    writer.write(String.format("	%s = %s\n", reference, value));
                 }
 
                 writer.write("\n");
@@ -53,28 +60,34 @@ public class RemoteCommands {
         }
     }
 
-    public static Map<String, List<ConfigValue>> readConfig() throws IOException {
-        Map<String, List<ConfigValue>> res = new HashMap<>();
-        Path pathConfig = JIT.resolve("config");
-        if (!Files.exists(pathConfig))
+    public static void configInit(String firstBranch) throws IOException {
+        String key = String.format("branch \"%s\"", firstBranch);
+        Map<String, String> init = Map.of("remote", "origin");
+        Map<String, Map<String, String>> map = Map.of(key, init);
+        writeConfig(map);
+    }
+
+    public static Map<String, Map<String, String>> readConfig(Path path) throws IOException {
+        Map<String, Map<String, String>> res = new HashMap<>();
+        if (!Files.exists(path))
             EXIT_FAILURE("No config file found (corrupted)");
 
-        String config = Files.readString(pathConfig);
+        String config = Files.readString(path);
         BufferedReader reader = new BufferedReader(new StringReader(config));
 
         String line;
         while ((line = reader.readLine()) != null) {
             if(!line.isBlank()) {
                 String key = line.substring(1, line.length() - 1);
-                List<ConfigValue> configList = new ArrayList<>();
+                Map<String, String> configMap = new HashMap<>();
                 while(!(line = reader.readLine().trim()).isEmpty()) {
                     int idx = line.indexOf("=");
                     String reference = line.substring(0, idx - 1);
                     String value = line.substring(idx + 2, line.length());
 
-                    configList.add(new ConfigValue(reference, value));
+                    configMap.put(reference, value);
                 }
-                res.put(key, configList);
+                res.put(key, configMap);
             }
         }
 
@@ -84,36 +97,94 @@ public class RemoteCommands {
         return res;
     }
 
-    record ConfigValue(String reference, String value) {
+    public static Optional<String> getRemote(Map<String, Map<String, String>> config, String curBranch) throws IOException {
+        ObjectStore objStore = new ObjectStore();
+        String key = String.format("branch \"%s\"", curBranch);
+
+        Map<String, String> map = config.get(key);
+
+        if(map == null)
+            EXIT_FAILURE(String.format("'%s' does not have a branch instance in config (corruption)", curBranch));
+
+        String remote = map.get("remote");
+
+        return remote == null ? Optional.empty() : Optional.of(remote);
+    }
+
+    public static Optional<String> remoteUrl(Map<String, Map<String, String>> config, String remote) {
+        String key = String.format("remote \"%s\"", remote);
+
+        Map<String, String> map = config.get(key);
+
+        if(map == null)
+            return Optional.empty();
+
+        String url = map.get("url");
+
+        if(url == null) EXIT_FAILURE(String.format("Missing url for remote `%s`", remote));
+
+        return Optional.of(url);
     }
 
     public static void remote(String[] args) throws IOException {
-        List<ConfigValue> a = List.of(new ConfigValue("a", "b"), new ConfigValue("c", "d"), new ConfigValue("e", "f"));
-        List<ConfigValue> b = List.of(new ConfigValue("g", "h"), new ConfigValue("i", "j"), new ConfigValue("k", "l"));
-        List<ConfigValue> c = List.of(new ConfigValue("m", "n"), new ConfigValue("o", "p"), new ConfigValue("q", "r"));
-        Map<String, List<ConfigValue>> configs = Map.of("A", a, "B", b, "C", c);
-
-        writeConfig(configs);
-        Map<String, List<ConfigValue>> res = readConfig();
-        writeConfig(res);
-        Map<String, List<ConfigValue>> res1 = readConfig();
-        writeConfig(res1);
-
-        /*
-        if (args.length == 1) {
+        ObjectStore objStore = new ObjectStore();
+        PrintStream out = System.out;
+        if (args.length == 0) {
             // Print out the origin for this branch
+            Map<String, Map<String, String>> config = readConfig(JIT.resolve("config"));
+            System.out.println(config);
+            if(config == null) {
+                out.println("No config values are in the config file, must be a new project");
+            } else {
+                String curBranch = curBranch(objStore);
+                Optional<String> remote = getRemote(config, curBranch);
+                if(remote.isEmpty()) {
+                    System.out.println(String.format("Add a new remote for branch %s", curBranch));
+                } else {
+                    String remoteIdentifier = remote.get();
+                    Optional<String> url = remoteUrl(config, remoteIdentifier);
+                    if(url.isEmpty()) {
+                        System.out.println(String.format("%s (no URL has been assigned)", remoteIdentifier));
+                    } else {
+                        System.out.println(String.format("%s (%s)", remoteIdentifier, url.get()));
+                    }
+                }
+            }
+
         } else if (args.length == 3) {
-            // Only add is supported in the form: jit remote add origin <URL>
+            // Only add is supported in the form: jit remote add <remote> <URL>
             // "add", "remote" and the "URL" if it ain't 3 then it is a failure
             Path config = JIT.resolve("config");
+            if(!args[0].equals("add")) EXIT_FAILURE("jit remote add <remote> <URL> is only supported");
 
             if (!Files.exists(config)) {
                 EXIT_FAILURE("Config file does not exist (corruption)");
             }
 
+            Map<String, Map<String, String>> configMap = readConfig(config);
+            String curBranch = curBranch(objStore);
+
+            Optional<String> remote = getRemote(configMap, curBranch);
+            if(remote.isEmpty()) EXIT_FAILURE(String.format("No remote exists for branch '%s'", curBranch));
+
+            if(!remote.get().equals(args[1])) EXIT_FAILURE(String.format("Remote %s does not belong to branch %s, the remote found was %s", args[1], curBranch, remote.get()));
+
+            Optional<String> url = remoteUrl(configMap, remote.get());
+            if(!url.isEmpty()) System.out.println(String.format("URL already exists for branch %s and it is: %s", remote.get(), url.get()));
+
+            String key = String.format("remote \"%s\"", args[1]);
+            Map<String, String> map = configMap.get(key);
+
+            if(map == null) map = new HashMap<>();
+
+            map.put("url", args[2]);
+            configMap.put(key, map);
+            System.out.println(configMap);
+            writeConfig(configMap);
+
         } else {
             EXIT_FAILURE("jit remote add <remote> <URL> is only supported");
         }
-        */
+
     }
 }
