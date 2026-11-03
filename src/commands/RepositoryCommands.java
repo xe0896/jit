@@ -49,9 +49,6 @@ public class RepositoryCommands {
         Files.createDirectory(JIT.resolve("refs").resolve("heads"));
     }
 
-    record ConfigValue(String reference, String value) {
-    }
-
     public static void add(String[] paths) throws IOException, InterruptedException, NoSuchAlgorithmException {
         ObjectStore objStore = new ObjectStore();
         Index index = new Index(objStore);
