@@ -19,6 +19,7 @@ import objects.Commit;
 import objects.JitObject;
 import objects.Tree;
 
+import static cli.ConsoleOutput.EXIT_SUCCESS;
 import static cli.ConsoleOutput.logPrinter;
 import static commands.BranchCommands.branch;
 import static commands.RepositoryCommands.add;
@@ -27,7 +28,6 @@ import static components.Repository.resolveHead;
 
 public class CommitCommands {
     public static void commit(String message) throws IOException, NoSuchAlgorithmException {
-        System.out.println(message);
         // When we commit that would make the HEAD point to this new commit,
         // we need to take a snapshot of the current index
         ObjectStore objStore = new ObjectStore();
@@ -100,10 +100,8 @@ public class CommitCommands {
     public static void log() throws IOException, NoSuchAlgorithmException {
         ObjectStore objStore = new ObjectStore();
         HeadInfo head = resolveHead(objStore);
-        if (head.commit().isEmpty()) {
-            System.out.println("No commit has happened yet");
-            return;
-        }
+        if (head.commit().isEmpty()) EXIT_SUCCESS("No commit has happened yet");
+
         PrintStream out = System.out;
 
         Commit commit = head.commit().get();

@@ -173,4 +173,9 @@ public class ConsoleOutput {
         System.out.println(message);
         System.exit(1);
     }
+
+    public static void EXIT_SUCCESS(String message) {
+        System.out.println(message);
+        System.exit(0);
+    }
 }

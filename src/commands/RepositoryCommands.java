@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static cli.ConsoleOutput.EXIT_FAILURE;
+import static cli.ConsoleOutput.EXIT_SUCCESS;
 import static commands.RemoteCommands.configInit;
 import static components.Repository.JIT;
 
@@ -37,8 +38,8 @@ public class RepositoryCommands {
                             }
                         });
             }
-            System.out.println("Re-initialised ./jit");
             Files.createDirectory(JIT);
+            EXIT_SUCCESS("Re-initialised ./jit");
         }
 
         Files.createDirectory(JIT.resolve("objects"));

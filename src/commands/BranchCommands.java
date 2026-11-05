@@ -18,6 +18,7 @@ import objects.Commit;
 import objects.JitObject;
 
 import static cli.ConsoleOutput.EXIT_FAILURE;
+import static cli.ConsoleOutput.EXIT_SUCCESS;
 import static cli.ConsoleOutput.GREEN;
 import static cli.ConsoleOutput.RESET;
 import static cli.ConsoleOutput.treeHashPrint;
@@ -112,7 +113,7 @@ public class BranchCommands {
         Files.writeString(newBranchLocation, hexHash);
         Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
 
-        System.out.println(String.format("Switching from branch '%s' to branch '%s'", curBranch, branch));
+        EXIT_SUCCESS(String.format("Switching from branch '%s' to branch '%s'", curBranch, branch));
     }
 
     public static Path branchCheck(String branch) throws IOException {
@@ -183,8 +184,8 @@ public class BranchCommands {
                     // populate the working directory
                     populate(commitTreeHash);
 
-                    System.out.println(String.format("Switch to branch '%s'", branch));
                     Files.writeString(JIT.resolve("HEAD"), "ref: refs/heads/" + branch);
+                    EXIT_SUCCESS(String.format("Switch to branch '%s'", branch));
                 }
             }
         }
