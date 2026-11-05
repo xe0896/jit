@@ -66,7 +66,15 @@ public class Main {
                 case SWITCH -> Switch(Arrays.copyOfRange(args, 1, args.length));
                 case LOG -> log();
                 case BRANCH -> branch();
-                case PUSH -> push(Arrays.copyOfRange(args, 1, args.length));
+                case PUSH -> {
+                    if(args.length > 3) EXIT_FAILURE("jit push currently only supports 'jit push' and 'jit push <remote> <branch>");
+
+                    if(args.length == 1) {
+                        push();
+                    } else if (args.length == 3) {
+                        push(Arrays.copyOfRange(args, 1, args.length));
+                    }
+                }
                 case REMOTE -> remote(Arrays.copyOfRange(args, 1, args.length));
                 default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }

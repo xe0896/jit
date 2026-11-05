@@ -4,6 +4,7 @@ import static cli.ConsoleOutput.EXIT_FAILURE;
 import static cli.ConsoleOutput.EXIT_SUCCESS;
 import static commands.BranchCommands.curBranch;
 import static components.Repository.JIT;
+import static components.Repository.resolveHead;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -18,6 +19,8 @@ import java.util.Optional;
 
 
 import components.ObjectStore;
+import entities.HeadInfo;
+import objects.Commit;
 
 public class RemoteCommands {
     private static final String ADD = "add";
@@ -27,15 +30,43 @@ public class RemoteCommands {
 
     }
 
-    public static void push(String[] args) {
+    public static void push() throws IOException {
+        ObjectStore objStore = new ObjectStore();
+        String curBranch = curBranch(objStore);
+
+        Map<String, Map<String, String>> config = readConfig(JIT.resolve("config"));
+
+        Optional<String> remote = getRemote(config, curBranch);
+        if(remote.isEmpty()) EXIT_FAILURE("Remote does not exist");
+
+        Optional<String> url = remoteUrl(config, remote.get());
+
+        if(url.isEmpty()) EXIT_FAILURE("URL does not exist");
+
+        HeadInfo head = resolveHead(objStore);
+        if(head.commit().isEmpty()) EXIT_FAILURE("Commit does not exist");
+
+        pusher(url.get(), head.commit().get());
+    }
+
+    public static void pusher(String url, Commit commit) {
+
+    }
+
+    public static void push(String[] args) throws IOException {
         String remote = args[0];
         String branch = args[1];
 
-        Path config = JIT.resolve("config");
+        Path configPath = JIT.resolve("config");
 
-        if (!Files.exists(config)) {
-            EXIT_FAILURE("Config file does not exist (corruption)");
-        }
+        if (!Files.exists(configPath)) EXIT_FAILURE("Config file does not exist (corruption)");
+
+        Map<String, Map<String, String>> config = readConfig(JIT.resolve("config"));
+        System.out.println("Checking remote: " + remote);
+        Optional<String> url = remoteUrl(config, remote);
+
+        if(!url.isEmpty()) System.out.println(url.get());
+
 
     }
 
