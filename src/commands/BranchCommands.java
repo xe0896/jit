@@ -86,7 +86,7 @@ public class BranchCommands {
                 gotoCommit(args[0].getBytes(StandardCharsets.UTF_8));
             }
         } else {
-            EXIT_FAILURE("jit switch only allows 2 arguments");
+            throw EXIT_FAILURE("jit switch only allows 2 arguments");
         }
     }
 
@@ -124,12 +124,12 @@ public class BranchCommands {
         String storedBranch = stored.substring(idx + 1, stored.length());
 
         if (branch.equals(storedBranch))
-            EXIT_FAILURE(String.format("Branch '%s' is already toggled", branch));
+            throw EXIT_FAILURE(String.format("Branch '%s' is already toggled", branch));
 
         Path branches = JIT.resolve("refs/heads");
 
         if (!Files.exists(branches.resolve(branch)))
-            EXIT_FAILURE(String.format("Branch '%s' does not exist", branch));
+            throw EXIT_FAILURE(String.format("Branch '%s' does not exist", branch));
 
         return branches;
     }
@@ -140,7 +140,7 @@ public class BranchCommands {
     * meaning no changes, else we need to replace it and also create folders that may also have new files
     * @param treeHash
     */
-    public static void populate(byte[] treeHash) {
+    public static void populate(byte[] treeHash) throws IOException {
 
     }
 
@@ -163,7 +163,7 @@ public class BranchCommands {
 
                     Optional<JitObject> object = objStore.load(hash);
                     if (object.isEmpty())
-                        EXIT_FAILURE("Hash stored in the branch file does not exist, possible corruption");
+                        throw EXIT_FAILURE("Hash stored in the branch file does not exist, possible corruption");
 
                     Commit commit = (Commit) object.get();
                     byte[] commitTreeHash = commit.treeHash;
@@ -178,7 +178,7 @@ public class BranchCommands {
                     changes(staged, unstaged, untracked); // Grab the staged, unstaged and untracked changes
 
                     if (unstaged.size() > 0)
-                        EXIT_FAILURE("You have unstaged changes");
+                        throw EXIT_FAILURE("You have unstaged changes");
 
                     // Given this tree hash and references to other trees as well as blobs
                     // populate the working directory

@@ -25,6 +25,9 @@ import static commands.RemoteCommands.push;
 import static commands.StatusCommands.status;
 import static components.Repository.JIT;
 
+import static components.Index.MODE_FILE;
+import static components.Index.MODE_NON_EXECUTABLE;
+
 public class ConsoleOutput {
     // ANSI color codes, helpful for outputting for stuff like 'jit status'
     public static final String RED = "\u001B[31m";
@@ -58,7 +61,7 @@ public class ConsoleOutput {
                     case Status.Modified a -> {
                         statusPrinter(out, GREEN, "modified:", a.path());
                     }
-                    default -> EXIT_FAILURE("Status incorrect enum");
+                    default -> throw EXIT_FAILURE("Status incorrect enum");
                 }
             }
         }
@@ -75,7 +78,7 @@ public class ConsoleOutput {
                     case Status.Modified a -> {
                         statusPrinter(out, RED, "modified:", a.path());
                     }
-                    default -> EXIT_FAILURE("Status incorrect enum");
+                    default -> throw EXIT_FAILURE("Status incorrect enum");
                 }
             }
         }
@@ -127,13 +130,13 @@ public class ConsoleOutput {
         Optional<JitObject> _obj = objStore.load(hash);
 
         if (_obj.isEmpty())
-            EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
+            throw EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
 
         JitObject obj = _obj.get();
 
         if (!(obj instanceof Tree tree)) {
             // Compiler does not know that EXIT_FAILURE is a [[noreturn]] function
-            EXIT_FAILURE("Provided initial hash must be a 'tree' hash");
+            throw EXIT_FAILURE("Provided initial hash must be a 'tree' hash");
 
         } else {
             Deque<Tree> stack = new ArrayDeque<>();
@@ -145,7 +148,7 @@ public class ConsoleOutput {
                 List<TreeEntry> list = cur.entries;
 
                 for (TreeEntry entry : list) {
-                    if (entry.mode() != 040000) {
+                    if (entry.mode() != MODE_FILE) {
                         // Directory
                         System.out.println("Directory: " + entry.path());
                     } else {
@@ -153,13 +156,13 @@ public class ConsoleOutput {
                         byte[] dirHash = entry.hash();
                         Optional<JitObject> _x = objStore.load(dirHash);
                         if (_x.isEmpty())
-                            EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
+                            throw EXIT_FAILURE("Expected a tree hash stored in objects/ for the provided hash to print");
 
                         JitObject x = _x.get();
 
                         if (!(x instanceof Tree parentTree)) {
                             // Compiler does not know that EXIT_FAILURE is a [[noreturn]] function
-                            EXIT_FAILURE("Provided hash must be a 'tree' hash");
+                            throw EXIT_FAILURE("Provided hash must be a 'tree' hash");
                         } else {
                             stack.push(parentTree);
                         }
@@ -169,9 +172,10 @@ public class ConsoleOutput {
         }
     }
 
-    public static void EXIT_FAILURE(String message) {
+    public static RuntimeException EXIT_FAILURE(String message) {
         System.out.println(message);
         System.exit(1);
+        return new IllegalStateException(message);
     }
 
     public static void EXIT_SUCCESS(String message) {

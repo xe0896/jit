@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -11,9 +12,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
+
+import static cli.ConsoleOutput.EXIT_FAILURE;
+import static cli.ConsoleOutput.treeHashPrint;
 
 import components.ObjectStore;
 import entities.*;
+import objects.Tree.TreeEntry;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
 // duplication as well as save memory
@@ -24,7 +30,7 @@ public class Commit extends JitObject {
     public byte[] treeHash;
 
     // A list of previous commits from this one, the reason why it aint a pointer
-    // like Commit c that points backwards, that would require deserialisation 
+    // like Commit c that points backwards, that would require deserialisation
     // of all parents, having a hash that points to each is better.
     public List<byte[]> parentHashes;
 
@@ -39,6 +45,27 @@ public class Commit extends JitObject {
         this.author = author;
         this.committer = committer;
         this.message = message;
+    }
+
+    // Given a tree hash that already is valid, print out the structure embedded
+    public static void commitFiles(byte[] hash) throws IOException {
+        if(hash == null) throw EXIT_FAILURE("Received null for printing commit files");
+        ObjectStore objStore = new ObjectStore();
+        Optional<JitObject> obj = objStore.load(hash);
+        if(obj.isEmpty()) throw EXIT_FAILURE("Expected a tree in the print but hash points to nothing");
+        if(!(obj.get() instanceof Tree tree)) throw EXIT_FAILURE("Expected a tree in the print but received " + obj.get().getClass().getSimpleName());
+        Deque<Tree> stack = new ArrayDeque<>();
+        stack.push(tree);
+
+        PrintStream out = System.out;
+
+        while(!stack.isEmpty()) {
+            Tree cur = stack.pop();
+            List<TreeEntry> list = cur.entries;
+            for(TreeEntry entry : list) {
+                if(entry.mode() )
+            }
+        }
     }
 
     public static Commit of(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author,

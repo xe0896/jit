@@ -29,6 +29,8 @@ public class Index {
     public Map<String, TreeEntry> entries;
 
     public static final Path INDEX_PATH = Path.of(".jit/index");
+    public static final int MODE_FILE = 040000;
+    public static final int MODE_NON_EXECUTABLE = 100644;
 
     public Index(ObjectStore objectStore) {
         this.objectStore = objectStore;
@@ -50,7 +52,7 @@ public class Index {
         // When we commit the files would already be in objects/ due to this line below
         byte[] hash = objectStore.store(blob);
         read();
-        entries.put(path, new TreeEntry(path, hash, 0100644));
+        entries.put(path, new TreeEntry(path, hash, MODE_NON_EXECUTABLE));
         write();
     }
 
@@ -192,7 +194,7 @@ public class Index {
                 map.put(path, new ArrayList<>());
             List<TreeEntry> parentList = map.get(parent);
 
-            parentList.add(new TreeEntry(name, hash, 040000));
+            parentList.add(new TreeEntry(name, hash, FILE));
         }
         return root;
     }

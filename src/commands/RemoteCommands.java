@@ -37,14 +37,14 @@ public class RemoteCommands {
         Map<String, Map<String, String>> config = readConfig(JIT.resolve("config"));
 
         Optional<String> remote = getRemote(config, curBranch);
-        if(remote.isEmpty()) EXIT_FAILURE("Remote does not exist");
+        if(remote.isEmpty()) throw EXIT_FAILURE("Remote does not exist");
 
         Optional<String> url = remoteUrl(config, remote.get());
 
-        if(url.isEmpty()) EXIT_FAILURE("URL does not exist");
+        if(url.isEmpty()) throw EXIT_FAILURE("URL does not exist");
 
         HeadInfo head = resolveHead(objStore);
-        if(head.commit().isEmpty()) EXIT_FAILURE("Commit does not exist");
+        if(head.commit().isEmpty()) throw EXIT_FAILURE("Commit does not exist");
 
         pusher(url.get(), head.commit().get());
     }
@@ -59,21 +59,19 @@ public class RemoteCommands {
 
         Path configPath = JIT.resolve("config");
 
-        if (!Files.exists(configPath)) EXIT_FAILURE("Config file does not exist (corruption)");
+        if (!Files.exists(configPath)) throw EXIT_FAILURE("Config file does not exist (corruption)");
 
         Map<String, Map<String, String>> config = readConfig(JIT.resolve("config"));
         System.out.println("Checking remote: " + remote);
         Optional<String> url = remoteUrl(config, remote);
 
         if(!url.isEmpty()) System.out.println(url.get());
-
-
     }
 
     public static void writeConfig(Map<String, Map<String, String>> map) throws IOException {
         Path config = JIT.resolve("config");
         if (!Files.exists(config))
-            EXIT_FAILURE("No config file found (corrupted)");
+            throw EXIT_FAILURE("No config file found (corrupted)");
 
         try (BufferedWriter writer = Files.newBufferedWriter(config)) {
             for (var entry : map.entrySet()) {
@@ -103,7 +101,7 @@ public class RemoteCommands {
     public static Map<String, Map<String, String>> readConfig(Path path) throws IOException {
         Map<String, Map<String, String>> res = new HashMap<>();
         if (!Files.exists(path))
-            EXIT_FAILURE("No config file found (corrupted)");
+            throw EXIT_FAILURE("No config file found (corrupted)");
 
         String config = Files.readString(path);
         BufferedReader reader = new BufferedReader(new StringReader(config));
@@ -136,7 +134,7 @@ public class RemoteCommands {
         Map<String, String> map = config.get(key);
 
         if(map == null)
-            EXIT_FAILURE(String.format("'%s' does not have a branch instance in config (corruption)", curBranch));
+            throw EXIT_FAILURE(String.format("'%s' does not have a branch instance in config (corruption)", curBranch));
 
         String remote = map.get("remote");
         return remote == null ? Optional.empty() : Optional.of(remote);
@@ -152,7 +150,7 @@ public class RemoteCommands {
 
         String url = map.get("url");
 
-        if(url == null) EXIT_FAILURE(String.format("Missing url for remote `%s`", remote));
+        if(url == null) throw EXIT_FAILURE(String.format("Missing url for remote `%s`", remote));
 
         return Optional.of(url);
     }
@@ -184,7 +182,7 @@ public class RemoteCommands {
         } else if (args.length == 3) {
             String cmd = args[0];
             Path config = JIT.resolve("config");
-            if (!Files.exists(config)) EXIT_FAILURE("Config file does not exist (corruption)");
+            if (!Files.exists(config)) throw EXIT_FAILURE("Config file does not exist (corruption)");
 
             switch(cmd) {
                 case ADD -> {
@@ -192,12 +190,12 @@ public class RemoteCommands {
                     String curBranch = curBranch(objStore);
 
                     Optional<String> remote = getRemote(configMap, curBranch);
-                    if(remote.isEmpty()) EXIT_FAILURE(String.format("No remote exists for branch '%s'", curBranch));
+                    if(remote.isEmpty()) throw EXIT_FAILURE(String.format("No remote exists for branch '%s'", curBranch));
 
-                    if(!remote.get().equals(args[1])) EXIT_FAILURE(String.format("Remote %s does not belong to branch %s, the remote found was %s", args[1], curBranch, remote.get()));
+                    if(!remote.get().equals(args[1])) throw EXIT_FAILURE(String.format("Remote %s does not belong to branch %s, the remote found was %s", args[1], curBranch, remote.get()));
 
                     Optional<String> url = remoteUrl(configMap, remote.get());
-                    if(!url.isEmpty()) EXIT_FAILURE(String.format("URL already exists for branch %s and it is: \"%s\"", remote.get(), url.get()));
+                    if(!url.isEmpty()) throw EXIT_FAILURE(String.format("URL already exists for branch %s and it is: \"%s\"", remote.get(), url.get()));
 
                     String key = String.format("remote \"%s\"", args[1]);
                     Map<String, String> map = configMap.get(key);
@@ -214,12 +212,12 @@ public class RemoteCommands {
                     String curBranch = curBranch(objStore);
 
                     Optional<String> remote = getRemote(configMap, curBranch);
-                    if(remote.isEmpty()) EXIT_FAILURE(String.format("No remote exists for branch '%s'", curBranch));
+                    if(remote.isEmpty()) throw EXIT_FAILURE(String.format("No remote exists for branch '%s'", curBranch));
 
-                    if(!remote.get().equals(args[1])) EXIT_FAILURE(String.format("Remote %s does not belong to branch %s, the remote found was %s", args[1], curBranch, remote.get()));
+                    if(!remote.get().equals(args[1])) throw EXIT_FAILURE(String.format("Remote %s does not belong to branch %s, the remote found was %s", args[1], curBranch, remote.get()));
 
                     Optional<String> url = remoteUrl(configMap, remote.get());
-                    if(url.isEmpty()) EXIT_FAILURE(String.format("Nothing to replace for branch '%s' as it is already empty, use 'jit remote add %s'", curBranch, curBranch));
+                    if(url.isEmpty()) throw EXIT_FAILURE(String.format("Nothing to replace for branch '%s' as it is already empty, use 'jit remote add %s'", curBranch, curBranch));
 
                     String key = String.format("remote \"%s\"", args[1]);
                     Map<String, String> map = configMap.get(key);
@@ -232,11 +230,11 @@ public class RemoteCommands {
                 }
 
                 default -> {
-                    EXIT_FAILURE("jit remote does not recognise command: " + cmd);
+                    throw EXIT_FAILURE("jit remote does not recognise command: " + cmd);
                 }
             }
         } else {
-            EXIT_FAILURE("jit remote only supports 'replace', 'add");
+            throw EXIT_FAILURE("jit remote only supports 'replace', 'add");
         }
     }
 }

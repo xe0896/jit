@@ -63,7 +63,7 @@ public class RepositoryCommands {
             try {
                 index.add(path);
             } catch (NoSuchFileException e) {
-                EXIT_FAILURE(String.format("path '%s' does not exist\n", path));
+                throw EXIT_FAILURE(String.format("path '%s' does not exist\n", path));
             }
         }
 

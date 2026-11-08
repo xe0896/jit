@@ -4,9 +4,14 @@ import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import components.ObjectStore;
+import entities.HeadInfo;
+import objects.Commit;
+
 import static cli.ConsoleOutput.EXIT_FAILURE;
 import static commands.BranchCommands.Switch;
 import static commands.BranchCommands.branch;
+import static commands.BranchCommands.curBranch;
 import static commands.CommitCommands.commit;
 import static commands.CommitCommands.log;
 import static commands.RemoteCommands.pull;
@@ -15,7 +20,9 @@ import static commands.RemoteCommands.remote;
 import static commands.RepositoryCommands.add;
 import static commands.RepositoryCommands.init;
 import static commands.StatusCommands.status;
+import static components.Repository.resolveHead;
 import static components.Repository.JIT;
+import static cli.ConsoleOutput.treeHashPrint;
 
 public class Main {
     // Supported operations
@@ -29,10 +36,11 @@ public class Main {
     private static final String BRANCH = "branch";
     private static final String PUSH = "push";
     private static final String REMOTE = "remote";
+    private static final String DUMMY = "dummy";
 
     public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException {
         if (args.length == 0)
-            EXIT_FAILURE("Provide more arguments");
+            throw EXIT_FAILURE("Provide more arguments");
 
         if (args[0].equals(INIT)) {
             init();
@@ -40,14 +48,20 @@ public class Main {
         }
 
         if (!Files.exists(JIT))
-            EXIT_FAILURE("fatal: not a jit repository (do jit init)");
+            throw EXIT_FAILURE("fatal: not a jit repository (do jit init)");
 
         try {
             switch (args[0]) {
+                case DUMMY -> {
+                    ObjectStore objStore = new ObjectStore();
+                    HeadInfo head = resolveHead(objStore);
+                    byte[] hash = head.commit().get().treeHash;
+                    Commit.commitFiles(hash);
+                }
                 case INIT -> init();
                 case ADD -> {
                     if (args.length == 1) {
-                        EXIT_FAILURE("jit add expects atleast one file name");
+                        throw EXIT_FAILURE("jit add expects atleast one file name");
                     } else {
                         add(Arrays.copyOfRange(args, 1, args.length));
                     }
@@ -56,10 +70,10 @@ public class Main {
                 case PULL -> pull();
                 case COMMIT -> {
                     if (args.length != 3)
-                        EXIT_FAILURE("jit status expects atleast 2 arguments (jit status <mode> 'message')");
+                        throw EXIT_FAILURE("jit status expects atleast 2 arguments (jit status <mode> 'message')");
 
                     if (!args[1].equals("-m"))
-                        EXIT_FAILURE("Only mode allowed is '-m'");
+                        throw EXIT_FAILURE("Only mode allowed is '-m'");
 
                     commit(args[2]);
                 }
@@ -67,7 +81,7 @@ public class Main {
                 case LOG -> log();
                 case BRANCH -> branch();
                 case PUSH -> {
-                    if(args.length > 3) EXIT_FAILURE("jit push currently only supports 'jit push' and 'jit push <remote> <branch>");
+                    if(args.length > 3) throw EXIT_FAILURE("jit push currently only supports 'jit push' and 'jit push <remote> <branch>");
 
                     if(args.length == 1) {
                         push();
@@ -76,7 +90,7 @@ public class Main {
                     }
                 }
                 case REMOTE -> remote(Arrays.copyOfRange(args, 1, args.length));
-                default -> EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
+                default -> throw EXIT_FAILURE(String.format("Command '%s' not implemented or does not exist", args[0]));
             }
         } catch (Exception e) {
             e.printStackTrace();
