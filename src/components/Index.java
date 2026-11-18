@@ -1,14 +1,11 @@
 package components;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -16,186 +13,205 @@ import java.util.List;
 import java.util.Map;
 
 import objects.Bloob;
-import objects.JitObject;
 import objects.Tree;
 import objects.Tree.TreeEntry;
 
 public class Index {
-    private ObjectStore objectStore;
-    // A map of entries that provided a full path, points to an index entry which specifies
-    // the mode which is the type so a tree or blob in most casesand the hash of the entry which
-    // is a SHA-1 hash and not the content hash which would point to the actual contents
-    // stored in the objects/ folder
-    public Map<String, TreeEntry> entries;
+   private ObjectStore objectStore;
+   // A map of entries that provided a full path, points to an index entry which
+   // specifies
+   // the mode which is the type so a tree or blob in most casesand the hash of the
+   // entry which
+   // is a SHA-1 hash and not the content hash which would point to the actual
+   // contents
+   // stored in the objects/ folder
+   public Map<String, TreeEntry> entries;
 
-    public static final Path INDEX_PATH = Path.of(".jit/index");
-    public static final int MODE_FILE = 040000;
-    public static final int MODE_NON_EXECUTABLE = 100644;
+   public static final Path INDEX_PATH = Path.of(".jit/index");
+   public static final int MODE_FILE = 040000;
+   public static final int MODE_NON_EXECUTABLE = 100644;
 
-    public Index(ObjectStore objectStore) {
-        this.objectStore = objectStore;
-        this.entries = new HashMap<>();
-    }
+   public Index(ObjectStore objectStore) {
+      this.objectStore = objectStore;
+      this.entries = new HashMap<>();
+   }
 
-    /**
-     * Adds the provided path into the index map by reading the bytes stored in the file
-     * and storing it in objects/ which must be a blob. The index file is read then
-     * adds the TreeEntry then writes, not that efficient
-     * @param path
-     * @throws IOException
-     * @throws NoSuchAlgorithmException
-     */
-    public void add(String path) throws IOException, NoSuchAlgorithmException, NoSuchFileException {
-        // A given path would be like src/main.c
-        byte[] bytes = Files.readAllBytes(Path.of(path));
-        Bloob blob = Bloob.of(bytes);
-        // When we commit the files would already be in objects/ due to this line below
-        byte[] hash = objectStore.store(blob);
-        read();
-        entries.put(path, new TreeEntry(path, hash, MODE_NON_EXECUTABLE));
-        write();
-    }
+   /**
+    * Adds the provided path into the index map by reading the bytes stored in the
+    * file
+    * and storing it in objects/ which must be a blob. The index file is read then
+    * adds the TreeEntry then writes, not that efficient
+    *
+    * @param path
+    * @throws IOException
+    * @throws NoSuchAlgorithmException
+    */
+   public void add(String path) throws IOException, NoSuchAlgorithmException, NoSuchFileException {
+      // A given path would be like src/main.c
+      byte[] bytes = Files.readAllBytes(Path.of(path));
+      Bloob blob = Bloob.of(bytes);
+      // When we commit the files would already be in objects/ due to this line below
+      byte[] hash = objectStore.store(blob);
+      read();
+      entries.put(path, new TreeEntry(path, hash, MODE_NON_EXECUTABLE));
+      write();
+   }
 
-    /**
-     * Remove the file from the index by first taking in the entries stored already in the index file
-     * then removes it from the map, then writes the map back
-     * @param path
-     */
-    public void remove(String path) throws IOException {
-        read();
-        entries.remove(path);
-        write();
-    }
+   /**
+    * Remove the file from the index by first taking in the entries stored already
+    * in the index file
+    * then removes it from the map, then writes the map back
+    *
+    * @param path
+    */
+   public void remove(String path) throws IOException {
+      read();
+      entries.remove(path);
+      write();
+   }
 
-    /**
-     * Given an already populated entries map, writes the contents into the index file, writing a list
-     * would automatically add '\n' which is used to delimit when we want to read()
-     * @throws IOException
-     */
-    public void write() throws IOException {
-        List<String> lines = new ArrayList<>();
+   /**
+    * Given an already populated entries map, writes the contents into the index
+    * file, writing a list
+    * would automatically add '\n' which is used to delimit when we want to read()
+    *
+    * @throws IOException
+    */
+   public void write() throws IOException {
+      List<String> lines = new ArrayList<>();
 
-        // For each String -> TreeEntry
-        for (var entry : entries.entrySet()) {
-            String path = entry.getKey();
-            TreeEntry idx = entry.getValue();
-            // Makes the hash human read-able, in terms of output being nice as the hash() stored here
-            // is going to be SHA-1 which can contain anything such as '\n' and have messy outputs
-            String hex = HexFormat.of().formatHex(idx.hash());
+      // For each String -> TreeEntry
+      for (var entry : entries.entrySet()) {
+         String path = entry.getKey();
+         TreeEntry idx = entry.getValue();
+         // Makes the hash human read-able, in terms of output being nice as the hash()
+         // stored here
+         // is going to be SHA-1 which can contain anything such as '\n' and have messy
+         // outputs
+         String hex = HexFormat.of().formatHex(idx.hash());
 
-            // Adds an entry and relies on '\n' delimit from the list
-            String res = idx.mode() + " " + hex + " " + path;
-            lines.add(res);
-        }
+         // Adds an entry and relies on '\n' delimit from the list
+         String res = idx.mode() + " " + hex + " " + path;
+         lines.add(res);
+      }
 
-        Files.write(INDEX_PATH, lines);
-    }
+      Files.write(INDEX_PATH, lines);
+   }
 
-    /**
-     * Reads the entries inside the current index file, and populates the entry map
-     * @throws IOException
-     */
-    public void read() throws IOException {
-        // <mode> <hex> <path>\n
-        // A line was delimited via '\n' by write()
-        for (String line : Files.readAllLines(INDEX_PATH)) {
-            // Splits each line into 3 parts to grab the full TreeEntry
-            String[] parts = line.split(" ", 3);
-            String _mode = parts[0];
-            String _hex = parts[1];
-            String path = parts[2];
+   /**
+    * Reads the entries inside the current index file, and populates the entry map
+    *
+    * @throws IOException
+    */
+   public void read() throws IOException {
+      // <mode> <hex> <path>\n
+      // A line was delimited via '\n' by write()
+      for (String line : Files.readAllLines(INDEX_PATH)) {
+         // Splits each line into 3 parts to grab the full TreeEntry
+         String[] parts = line.split(" ", 3);
+         String _mode = parts[0];
+         String _hex = parts[1];
+         String path = parts[2];
 
-            // Parse the hex representation of SHA-1 back to SHA-1
-            int mode = Integer.parseInt(_mode);
-            byte[] hash = HexFormat.of().parseHex(_hex);
+         // Parse the hex representation of SHA-1 back to SHA-1
+         int mode = Integer.parseInt(_mode);
+         byte[] hash = HexFormat.of().parseHex(_hex);
 
-            TreeEntry idx = new TreeEntry(path, hash, mode);
-            entries.put(path, idx);
-        }
-    }
+         TreeEntry idx = new TreeEntry(path, hash, mode);
+         entries.put(path, idx);
+      }
+   }
 
-    private Map<String, List<TreeEntry>> generateFileMap() {
-        Map<String, List<TreeEntry>> map = new HashMap<>();
-        for (String path : entries.keySet()) {
-            // For each path so src/main.c
-            int idx = path.lastIndexOf("/");
-            // Obtain idx of last "/" so then we can get the folder of this
-            // such as src/main.c, and take the idx "/" and go up to not including
-            // so substring(0, idx)
-            if (idx == -1) {
-                // idx == -1 suggests this is a root file, make a special case of
-                // "" to hold root files
-                if (!map.containsKey(""))
-                    map.put("", new ArrayList<>());
-                List<TreeEntry> list = map.get("");
-                list.add(entries.get(path));
-            } else {
-                String dir = path.substring(0, idx);
-                if (!map.containsKey(dir))
-                    map.put(dir, new ArrayList<>());
-                List<TreeEntry> list = map.get(dir);
-                list.add(entries.get(path));
-            }
-        }
+   private Map<String, List<TreeEntry>> generateFileMap() {
+      Map<String, List<TreeEntry>> map = new HashMap<>();
+      for (String path : entries.keySet()) {
+         // For each path so src/main.c
+         int idx = path.lastIndexOf("/");
+         // Obtain idx of last "/" so then we can get the folder of this
+         // such as src/main.c, and take the idx "/" and go up to not including
+         // so substring(0, idx)
+         if (idx == -1) {
+            // idx == -1 suggests this is a root file, make a special case of
+            // "" to hold root files
+            if (!map.containsKey(""))
+               map.put("", new ArrayList<>());
+            List<TreeEntry> list = map.get("");
+            list.add(entries.get(path));
+         } else {
+            String dir = path.substring(0, idx);
+            if (!map.containsKey(dir))
+               map.put(dir, new ArrayList<>());
+            List<TreeEntry> list = map.get(dir);
+            list.add(entries.get(path));
+         }
+      }
 
-        return map;
+      return map;
 
-    }
+   }
 
-    /**
-     * Builds the tree hierarchy represented by the current index
-     *
-     * @return byte[] content hash of the root, should point to a tree
-     * @throws IOException
-     * @throws NoSuchAlgorithmException
-     */
-    public byte[] buildTree() throws IOException, NoSuchAlgorithmException {
-        Map<String, List<TreeEntry>> map = generateFileMap();
+   /**
+    * Builds the tree hierarchy represented by the current index
+    *
+    * @return byte[] content hash of the root, should point to a tree
+    * @throws IOException
+    * @throws NoSuchAlgorithmException
+    */
+   public byte[] buildTree() throws IOException, NoSuchAlgorithmException {
+      Map<String, List<TreeEntry>> map = generateFileMap();
 
-        // Consider a repository that only has a folder in the root so src/ and no file
-        // meaning there would be no instance of "" and therefore the root would be null
-        // a tree still exists though since
-        byte[] root = null;
+      // Consider a repository that only has a folder in the root so src/ and no file
+      // meaning there would be no instance of "" and therefore the root would be null
+      // a tree still exists though since
+      byte[] root = null;
 
-        // Gets a list of directories
-        List<String> dirs = new ArrayList<>(map.keySet());
+      // Gets a list of directories
+      List<String> dirs = new ArrayList<>(map.keySet());
 
-        // Sorts by having the deepest directories to be processed first, this is because
-        // there is dependencies starting from the top, so we process them first
+      // Sorts by having the deepest directories to be processed first, this is
+      // because
+      // there is dependencies starting from the top, so we process them first
 
-        // To think of this, the deepest directory has no directory, it just has files so
-        // then that would do Tree.of(list) with no directories so its safe, and also record its entry
-        // so then we need to go to its parent provide its identity and then it can do Tree.of(list)
-        // to get the full entry (directory + file)
-        dirs.sort(Comparator.comparingInt((String dir) -> dir.isEmpty() ? 0 : dir.split("/").length).reversed());
+      // To think of this, the deepest directory has no directory, it just has files
+      // so
+      // then that would do Tree.of(list) with no directories so its safe, and also
+      // record its entry
+      // so then we need to go to its parent provide its identity and then it can do
+      // Tree.of(list)
+      // to get the full entry (directory + file)
+      dirs.sort(Comparator.comparingInt((String dir) -> dir.isEmpty() ? 0 : dir.split("/").length).reversed());
 
-        for (String path : dirs) {
-            List<TreeEntry> list = map.get(path);
-            Tree tree = Tree.of(list);
+      for (String path : dirs) {
+         List<TreeEntry> list = map.get(path);
+         Tree tree = Tree.of(list);
 
-            // Store the tree into the object store, so that we can keep it state as this function
-            // would be call for a commit
-            byte[] hash = objectStore.store(tree);
+         // Store the tree into the object store, so that we can keep it state as this
+         // function
+         // would be call for a commit
+         byte[] hash = objectStore.store(tree);
 
-            // Given that the path is empty, this suggests that this is the root directory, and we need
-            // this to return so that we can branch to the others seen this is the starting point
-            // and we continue as there is no parent to propagate to
-            if (path.isEmpty()) {
-                root = hash;
-                continue;
-            }
+         // Given that the path is empty, this suggests that this is the root directory,
+         // and we need
+         // this to return so that we can branch to the others seen this is the starting
+         // point
+         // and we continue as there is no parent to propagate to
+         if (path.isEmpty()) {
+            root = hash;
+            continue;
+         }
 
-            int idx = path.lastIndexOf("/");
-            String parent = (idx == -1) ? "" : path.substring(0, idx);
-            String name = (idx == -1) ? path : path.substring(idx + 1);
+         int idx = path.lastIndexOf("/");
+         String parent = (idx == -1) ? "" : path.substring(0, idx);
+         String name = (idx == -1) ? path : path.substring(idx + 1);
 
-            // Add this entry into the parent so that it has one of its missing directory resolved
-            if (!map.containsKey(parent))
-                map.put(path, new ArrayList<>());
-            List<TreeEntry> parentList = map.get(parent);
+         // Add this entry into the parent so that it has one of its missing directory
+         // resolved
+         if (!map.containsKey(parent))
+            map.put(path, new ArrayList<>());
+         List<TreeEntry> parentList = map.get(parent);
 
-            parentList.add(new TreeEntry(name, hash, FILE));
-        }
-        return root;
-    }
+         parentList.add(new TreeEntry(name, hash, MODE_FILE));
+      }
+      return root;
+   }
 }

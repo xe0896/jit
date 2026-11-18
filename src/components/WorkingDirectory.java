@@ -10,28 +10,28 @@ import java.util.List;
 import java.util.Map;
 
 public class WorkingDirectory {
-    // List of things to ignore in the root of a jit directory
-    private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
+   // List of things to ignore in the root of a jit directory
+   private static final List<String> ignores = List.of(".git", ".jit", ".DS_Store");
 
-    public static Map<String, byte[]> getWorkingPaths() throws IOException {
-        Map<String, byte[]> currentPaths = new HashMap<>();
-        Deque<Path> stack = new ArrayDeque<>();
+   public static Map<String, byte[]> getWorkingPaths() throws IOException {
+      Map<String, byte[]> currentPaths = new HashMap<>();
+      Deque<Path> stack = new ArrayDeque<>();
 
-        stack.push(Path.of(""));
+      stack.push(Path.of(""));
 
-        while (!stack.isEmpty()) {
-            Path cur = stack.pop();
-            if (ignores.contains(cur.getFileName().toString()))
-                continue;
-            if (Files.isDirectory(cur)) {
-                Files.list(cur).forEach(path -> {
-                    stack.push(path);
-                });
-            } else {
-                currentPaths.put(cur.toString(), Files.readAllBytes(cur));
-            }
-        }
+      while (!stack.isEmpty()) {
+         Path cur = stack.pop();
+         if (ignores.contains(cur.getFileName().toString()))
+            continue;
+         if (Files.isDirectory(cur)) {
+            Files.list(cur).forEach(path -> {
+               stack.push(path);
+            });
+         } else {
+            currentPaths.put(cur.toString(), Files.readAllBytes(cur));
+         }
+      }
 
-        return currentPaths;
-    }
+      return currentPaths;
+   }
 }

@@ -2,28 +2,28 @@ package objects;
 // Actual file content like a main.c
 
 public class Bloob extends JitObject {
-    private static final String TYPE = "blob";
-    private final byte[] content;
+   private static final String TYPE = "blob";
+   private final byte[] content;
 
-    private Bloob(byte[] content) {
-        this.content = content;
-    }
+   private Bloob(byte[] content) {
+      this.content = content;
+   }
 
-    public static Bloob of(byte[] content) {
-        return new Bloob(content);
-    }
+   public static Bloob of(byte[] content) {
+      return new Bloob(content);
+   }
 
-    @Override
-    public String type() {
-        return TYPE;
-    }
+   @Override
+   public String type() {
+      return TYPE;
+   }
 
-    @Override
-    public byte[] serialiseContent() {
-        return content;
-    }
+   @Override
+   public byte[] serialiseContent() {
+      return content;
+   }
 
-    public static Bloob parseContent(byte[] payload) {
-        return new Bloob(payload);
-    }
+   public static Bloob parseContent(byte[] payload) {
+      return new Bloob(payload);
+   }
 }

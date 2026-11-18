@@ -1,7 +1,9 @@
 package objects;
 
+import static cli.ConsoleOutput.EXIT_FAILURE;
+import static components.Index.MODE_FILE;
+
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -14,149 +16,155 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static cli.ConsoleOutput.treeHashPrint;
-
 import components.ObjectStore;
-import entities.*;
+import entities.Author;
+import entities.Committer;
 import objects.Tree.TreeEntry;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
 // duplication as well as save memory
 public class Commit extends JitObject {
-    private static final String TYPE = "commit";
+   private static final String TYPE = "commit";
 
-    // Points to the tree hash stored in objects/, the contents of the commit
-    public byte[] treeHash;
+   // Points to the tree hash stored in objects/, the contents of the commit
+   public byte[] treeHash;
 
-    // A list of previous commits from this one, the reason why it aint a pointer
-    // like Commit c that points backwards, that would require deserialisation
-    // of all parents, having a hash that points to each is better.
-    public List<byte[]> parentHashes;
+   // A list of previous commits from this one, the reason why it aint a pointer
+   // like Commit c that points backwards, that would require deserialisation
+   // of all parents, having a hash that points to each is better.
+   public List<byte[]> parentHashes;
 
-    public Author author;
-    public Committer committer;
+   public Author author;
+   public Committer committer;
 
-    public String message;
+   public String message;
 
-    private Commit(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author, String message) {
-        this.treeHash = treeHash;
-        this.parentHashes = parentHashes;
-        this.author = author;
-        this.committer = committer;
-        this.message = message;
-    }
+   private Commit(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author, String message) {
+      this.treeHash = treeHash;
+      this.parentHashes = parentHashes;
+      this.author = author;
+      this.committer = committer;
+      this.message = message;
+   }
 
-    // Given a tree hash that already is valid, print out the structure embedded
-    public static void commitFiles(byte[] hash) throws IOException {
-        if(hash == null) throw EXIT_FAILURE("Received null for printing commit files");
-        ObjectStore objStore = new ObjectStore();
-        Optional<JitObject> obj = objStore.load(hash);
-        if(obj.isEmpty()) throw EXIT_FAILURE("Expected a tree in the print but hash points to nothing");
-        if(!(obj.get() instanceof Tree tree)) throw EXIT_FAILURE("Expected a tree in the print but received " + obj.get().getClass().getSimpleName());
-        Deque<Tree> stack = new ArrayDeque<>();
-        stack.push(tree);
+   // Given a tree hash that already is valid, print out the structure embedded
+   public static void commitFiles(byte[] hash) throws IOException {
+      if (hash == null)
+         throw EXIT_FAILURE("Received null for printing commit files");
+      ObjectStore objStore = new ObjectStore();
+      Optional<JitObject> obj = objStore.load(hash);
+      if (obj.isEmpty())
+         throw EXIT_FAILURE("Expected a tree in the print but hash points to nothing");
+      if (!(obj.get() instanceof Tree tree))
+         throw EXIT_FAILURE("Expected a tree in the print but received " + obj.get().getClass().getSimpleName());
+      Deque<Tree> stack = new ArrayDeque<>();
+      stack.push(tree);
 
-        PrintStream out = System.out;
+      PrintStream out = System.out;
 
-        while(!stack.isEmpty()) {
-            Tree cur = stack.pop();
-            List<TreeEntry> list = cur.entries;
-            for(TreeEntry entry : list) {
-                if(entry.mode() )
+      while (!stack.isEmpty()) {
+         Tree cur = stack.pop();
+         List<TreeEntry> list = cur.entries;
+         for (TreeEntry entry : list) {
+            if (entry.mode() != MODE_FILE) {
+
+            } else {
+
             }
-        }
-    }
+         }
+      }
+   }
 
-    public static Commit of(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author,
-            String message) {
-        return new Commit(treeHash, parentHashes, committer, author, message);
-    }
+   public static Commit of(byte[] treeHash, List<byte[]> parentHashes, Committer committer, Author author,
+         String message) {
+      return new Commit(treeHash, parentHashes, committer, author, message);
+   }
 
-    @Override
-    public String type() {
-        return TYPE;
-    }
+   @Override
+   public String type() {
+      return TYPE;
+   }
 
-    @Override
-    public byte[] serialiseContent() throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        DataOutputStream outPrim = new DataOutputStream(out);
+   @Override
+   public byte[] serialiseContent() throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      DataOutputStream outPrim = new DataOutputStream(out);
 
-        out.write(author.name().getBytes(JitObject.utf));
-        out.write(0);
-        out.write(author.email().getBytes(JitObject.utf));
-        out.write(0);
-        out.write(committer.name().getBytes(JitObject.utf));
-        out.write(0);
-        out.write(committer.email().getBytes(JitObject.utf));
-        out.write(0);
-        out.write(message.getBytes(JitObject.utf));
-        out.write(0);
-        outPrim.writeLong(author.time().getEpochSecond());
-        outPrim.writeLong(committer.time().getEpochSecond());
-        out.write(treeHash);
-        outPrim.writeInt(parentHashes.size());
+      out.write(author.name().getBytes(JitObject.utf));
+      out.write(0);
+      out.write(author.email().getBytes(JitObject.utf));
+      out.write(0);
+      out.write(committer.name().getBytes(JitObject.utf));
+      out.write(0);
+      out.write(committer.email().getBytes(JitObject.utf));
+      out.write(0);
+      out.write(message.getBytes(JitObject.utf));
+      out.write(0);
+      outPrim.writeLong(author.time().getEpochSecond());
+      outPrim.writeLong(committer.time().getEpochSecond());
+      out.write(treeHash);
+      outPrim.writeInt(parentHashes.size());
 
-        for (int i = 0; i < parentHashes.size(); i++) {
-            byte[] parentHash = parentHashes.get(i);
-            out.write(parentHash);
-        }
+      for (int i = 0; i < parentHashes.size(); i++) {
+         byte[] parentHash = parentHashes.get(i);
+         out.write(parentHash);
+      }
 
-        return out.toByteArray();
-    }
+      return out.toByteArray();
+   }
 
-    public static Commit parseContent(byte[] content) {
-        // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]<list of parent hashes>
-        // use +20 bytes to read the next hash
+   public static Commit parseContent(byte[] content) {
+      // <a_name>0<a_email>0<c_name>0<c_email>0<message>0<a_time><c_time><treeHash>[length]<list
+      // of parent hashes>
+      // use +20 bytes to read the next hash
 
-        // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
-        // Binary (long, Instant, int) - any byte value can appear, including 0x00
+      // Text (ASCII/UTF-8) - null byte doesn't appear in practice safe delimiter
+      // Binary (long, Instant, int) - any byte value can appear, including 0x00
 
-        Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 6);
-        byte[] _aname = list.poll();
-        byte[] _aemail = list.poll();
-        byte[] _cname = list.poll();
-        byte[] _cemail = list.poll();
-        byte[] _message = list.poll();
+      Deque<byte[]> list = JitObject.split(content, (byte) 0, 0, 6);
+      byte[] _aname = list.poll();
+      byte[] _aemail = list.poll();
+      byte[] _cname = list.poll();
+      byte[] _cemail = list.poll();
+      byte[] _message = list.poll();
 
-        String authorName = new String(_aname, JitObject.utf);
-        String authorEmail = new String(_aemail, JitObject.utf);
-        String committerName = new String(_cname, JitObject.utf);
-        String committerEmail = new String(_cemail, JitObject.utf);
-        String message = new String(_message, JitObject.utf);
+      String authorName = new String(_aname, JitObject.utf);
+      String authorEmail = new String(_aemail, JitObject.utf);
+      String committerName = new String(_cname, JitObject.utf);
+      String committerEmail = new String(_cemail, JitObject.utf);
+      String message = new String(_message, JitObject.utf);
 
-        byte[] timeHashLength = list.poll();
+      byte[] timeHashLength = list.poll();
 
-        byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
-        byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2 * Long.BYTES);
+      byte[] _authorTime = Arrays.copyOfRange(timeHashLength, 0, Long.BYTES);
+      byte[] _committerTime = Arrays.copyOfRange(timeHashLength, Long.BYTES, 2 * Long.BYTES);
 
-        //String authorName = new String(_aname, JitObject.utf);
+      // String authorName = new String(_aname, JitObject.utf);
 
-        Instant authorTime = Instant.ofEpochSecond(ByteBuffer.wrap(_authorTime).getLong());
-        Instant committerTime = Instant.ofEpochSecond(ByteBuffer.wrap(_committerTime).getLong());
+      Instant authorTime = Instant.ofEpochSecond(ByteBuffer.wrap(_authorTime).getLong());
+      Instant committerTime = Instant.ofEpochSecond(ByteBuffer.wrap(_committerTime).getLong());
 
-        Author author = new Author(authorName, authorEmail, authorTime);
-        Committer committer = new Committer(committerName, committerEmail, committerTime);
+      Author author = new Author(authorName, authorEmail, authorTime);
+      Committer committer = new Committer(committerName, committerEmail, committerTime);
 
-        byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES, 2 * Long.BYTES + JitObject.HASH_LENGTH);
-        byte[] _length = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES + JitObject.HASH_LENGTH,
-                2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES);
+      byte[] treeHash = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES, 2 * Long.BYTES + JitObject.HASH_LENGTH);
+      byte[] _length = Arrays.copyOfRange(timeHashLength, 2 * Long.BYTES + JitObject.HASH_LENGTH,
+            2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES);
 
-        byte[] _parentHashes = Arrays.copyOfRange(timeHashLength,
-                2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES, timeHashLength.length);
+      byte[] _parentHashes = Arrays.copyOfRange(timeHashLength,
+            2 * Long.BYTES + JitObject.HASH_LENGTH + Integer.BYTES, timeHashLength.length);
 
-        int length = ByteBuffer.wrap(_length).getInt();
+      int length = ByteBuffer.wrap(_length).getInt();
 
-        int parentIdx = 0;
-        List<byte[]> parentHashes = new ArrayList<>();
+      int parentIdx = 0;
+      List<byte[]> parentHashes = new ArrayList<>();
 
-        for (int i = 0; i < length; i++) {
-            byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + JitObject.HASH_LENGTH);
-            parentHashes.add(parentHash);
-            parentIdx += JitObject.HASH_LENGTH;
-        }
+      for (int i = 0; i < length; i++) {
+         byte[] parentHash = Arrays.copyOfRange(_parentHashes, parentIdx, parentIdx + JitObject.HASH_LENGTH);
+         parentHashes.add(parentHash);
+         parentIdx += JitObject.HASH_LENGTH;
+      }
 
-        return new Commit(treeHash, parentHashes, committer, author, message);
-    }
+      return new Commit(treeHash, parentHashes, committer, author, message);
+   }
 }
