@@ -1,25 +1,27 @@
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static commands.BranchCommands.Switch;
-import static commands.BranchCommands.branch;
-import static commands.CommitCommands.commit;
-import static commands.CommitCommands.log;
-import static commands.RemoteCommands.pull;
-import static commands.RemoteCommands.push;
-import static commands.RemoteCommands.remote;
-import static commands.RepositoryCommands.add;
-import static commands.RepositoryCommands.init;
-import static commands.StatusCommands.status;
-import static components.Repository.JIT;
-import static components.Repository.resolveHead;
+package git;
+
+import static git.cli.ConsoleOutput.EXIT_FAILURE;
+import static git.commands.BranchCommands.Switch;
+import static git.commands.BranchCommands.branch;
+import static git.commands.CommitCommands.commit;
+import static git.commands.CommitCommands.log;
+import static git.commands.RemoteCommands.pull;
+import static git.commands.RemoteCommands.push;
+import static git.commands.RemoteCommands.remote;
+import static git.commands.RepositoryCommands.add;
+import static git.commands.RepositoryCommands.init;
+import static git.commands.StatusCommands.status;
+import static git.components.Repository.JIT;
+import static git.components.Repository.resolveHead;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import components.ObjectStore;
-import entities.HeadInfo;
-import objects.Commit;
+import git.components.ObjectStore;
+import git.entities.HeadInfo;
+import git.objects.Commit;
 
 public class Main {
    // Supported operations

@@ -1,4 +1,4 @@
-package components;
+package git.components;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,9 +12,9 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
-import objects.Bloob;
-import objects.Tree;
-import objects.Tree.TreeEntry;
+import git.objects.Bloob;
+import git.objects.Tree;
+import git.objects.Tree.TreeEntry;
 
 public class Index {
    private ObjectStore objectStore;

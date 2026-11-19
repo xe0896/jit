@@ -1,9 +1,9 @@
-package commands;
+package git.commands;
 
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static cli.ConsoleOutput.EXIT_SUCCESS;
-import static commands.RemoteCommands.configInit;
-import static components.Repository.JIT;
+import static git.cli.ConsoleOutput.EXIT_FAILURE;
+import static git.cli.ConsoleOutput.EXIT_SUCCESS;
+import static git.commands.RemoteCommands.configInit;
+import static git.components.Repository.JIT;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,8 +15,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
-import components.Index;
-import components.ObjectStore;
+import git.components.Index;
+import git.components.ObjectStore;
 
 public class RepositoryCommands {
    private static final String startingBranch = "master";

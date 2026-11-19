@@ -1,4 +1,4 @@
-package components;
+package git.components;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,9 +6,9 @@ import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.Optional;
 
-import entities.HeadInfo;
-import objects.Commit;
-import objects.JitObject;
+import git.entities.HeadInfo;
+import git.objects.Commit;
+import git.objects.JitObject;
 
 public class Repository {
    public static final Path JIT = Path.of(".jit");

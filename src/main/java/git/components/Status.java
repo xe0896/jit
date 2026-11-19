@@ -1,4 +1,4 @@
-package components;
+package git.components;
 
 public sealed interface Status {
    record Added(String path) implements Status {

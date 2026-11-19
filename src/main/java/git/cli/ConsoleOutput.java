@@ -1,6 +1,6 @@
-package cli;
+package git.cli;
 
-import static components.Index.MODE_FILE;
+import static git.components.Index.MODE_FILE;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -13,12 +13,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
-import components.ObjectStore;
-import components.Status;
-import objects.Commit;
-import objects.JitObject;
-import objects.Tree;
-import objects.Tree.TreeEntry;
+import git.components.ObjectStore;
+import git.components.Status;
+import git.objects.Commit;
+import git.objects.JitObject;
+import git.objects.Tree;
+import git.objects.Tree.TreeEntry;
 
 public class ConsoleOutput {
    // ANSI color codes, helpful for outputting for stuff like 'jit status'

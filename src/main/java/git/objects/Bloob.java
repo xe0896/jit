@@ -1,4 +1,4 @@
-package objects;
+package git.objects;
 // Actual file content like a main.c
 
 public class Bloob extends JitObject {

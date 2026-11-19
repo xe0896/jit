@@ -1,9 +1,9 @@
-package commands;
+package git.commands;
 
-import static cli.ConsoleOutput.EXIT_SUCCESS;
-import static cli.ConsoleOutput.logPrinter;
-import static components.Repository.JIT;
-import static components.Repository.resolveHead;
+import static git.cli.ConsoleOutput.EXIT_SUCCESS;
+import static git.cli.ConsoleOutput.logPrinter;
+import static git.components.Repository.JIT;
+import static git.components.Repository.resolveHead;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -16,13 +16,13 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
-import components.Index;
-import components.ObjectStore;
-import entities.Author;
-import entities.Committer;
-import entities.HeadInfo;
-import objects.Commit;
-import objects.JitObject;
+import git.components.Index;
+import git.components.ObjectStore;
+import git.entities.Author;
+import git.entities.Committer;
+import git.entities.HeadInfo;
+import git.objects.Commit;
+import git.objects.JitObject;
 
 public class CommitCommands {
    public static void commit(String message) throws IOException, NoSuchAlgorithmException {

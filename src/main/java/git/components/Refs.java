@@ -1,4 +1,4 @@
-package components;
+package git.components;
 
 import java.io.IOException;
 import java.nio.file.Files;

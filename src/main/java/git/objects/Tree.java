@@ -1,4 +1,4 @@
-package objects;
+package git.objects;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

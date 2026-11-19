@@ -1,7 +1,7 @@
-package objects;
+package git.objects;
 
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static components.Index.MODE_FILE;
+import static git.cli.ConsoleOutput.EXIT_FAILURE;
+import static git.components.Index.MODE_FILE;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -16,10 +16,10 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 
-import components.ObjectStore;
-import entities.Author;
-import entities.Committer;
-import objects.Tree.TreeEntry;
+import git.components.ObjectStore;
+import git.entities.Author;
+import git.entities.Committer;
+import git.objects.Tree.TreeEntry;
 
 // A snapshot pointer of the root tree, we use the hash so avoid
 // duplication as well as save memory

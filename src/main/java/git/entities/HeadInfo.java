@@ -1,8 +1,8 @@
-package entities;
+package git.entities;
 
 import java.util.Optional;
 
-import objects.Commit;
+import git.objects.Commit;
 
 public record HeadInfo(Optional<String> branch, Optional<Commit> commit) {
 }

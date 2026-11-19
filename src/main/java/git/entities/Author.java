@@ -1,4 +1,4 @@
-package entities;
+package git.entities;
 
 import java.time.Instant;
 

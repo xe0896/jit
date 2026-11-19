@@ -1,7 +1,7 @@
-package components;
+package git.components;
 
-import static components.Repository.resolveHead;
-import static components.WorkingDirectory.getWorkingPaths;
+import static git.components.Repository.resolveHead;
+import static git.components.WorkingDirectory.getWorkingPaths;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -12,12 +12,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import entities.HeadInfo;
-import objects.Bloob;
-import objects.Commit;
-import objects.JitObject;
-import objects.Tree;
-import objects.Tree.TreeEntry;
+import git.entities.HeadInfo;
+import git.objects.Bloob;
+import git.objects.Commit;
+import git.objects.JitObject;
+import git.objects.Tree;
+import git.objects.Tree.TreeEntry;
 
 public class StatusScanner {
    public static HeadInfo changes(List<Status> staged, List<Status> unstaged, List<Status> untracked)

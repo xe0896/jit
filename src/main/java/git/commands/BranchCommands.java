@@ -1,12 +1,12 @@
-package commands;
+package git.commands;
 
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static cli.ConsoleOutput.EXIT_SUCCESS;
-import static cli.ConsoleOutput.GREEN;
-import static cli.ConsoleOutput.RESET;
-import static components.Repository.JIT;
-import static components.Repository.resolveHead;
-import static components.StatusScanner.changes;
+import static git.cli.ConsoleOutput.EXIT_FAILURE;
+import static git.cli.ConsoleOutput.EXIT_SUCCESS;
+import static git.cli.ConsoleOutput.GREEN;
+import static git.cli.ConsoleOutput.RESET;
+import static git.components.Repository.JIT;
+import static git.components.Repository.resolveHead;
+import static git.components.StatusScanner.changes;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -19,11 +19,11 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
-import components.ObjectStore;
-import components.Status;
-import entities.HeadInfo;
-import objects.Commit;
-import objects.JitObject;
+import git.components.ObjectStore;
+import git.components.Status;
+import git.entities.HeadInfo;
+import git.objects.Commit;
+import git.objects.JitObject;
 
 public class BranchCommands {
    /**

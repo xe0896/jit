@@ -1,14 +1,14 @@
-package commands;
+package git.commands;
 
-import static cli.ConsoleOutput.statusPrint;
-import static components.StatusScanner.changes;
+import static git.cli.ConsoleOutput.statusPrint;
+import static git.components.StatusScanner.changes;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import components.Status;
-import entities.HeadInfo;
+import git.components.Status;
+import git.entities.HeadInfo;
 
 public class StatusCommands {
    public static void status() throws IOException {

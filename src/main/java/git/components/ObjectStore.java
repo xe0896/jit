@@ -1,4 +1,4 @@
-package components;
+package git.components;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
 
-import objects.JitObject;
+import git.objects.JitObject;
 
 public class ObjectStore {
    public static final Path OBJECT_PATH = Path.of(".jit/objects");

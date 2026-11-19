@@ -1,10 +1,10 @@
-package commands;
+package git.commands;
 
-import static cli.ConsoleOutput.EXIT_FAILURE;
-import static cli.ConsoleOutput.EXIT_SUCCESS;
-import static commands.BranchCommands.curBranch;
-import static components.Repository.JIT;
-import static components.Repository.resolveHead;
+import static git.cli.ConsoleOutput.EXIT_FAILURE;
+import static git.cli.ConsoleOutput.EXIT_SUCCESS;
+import static git.commands.BranchCommands.curBranch;
+import static git.components.Repository.JIT;
+import static git.components.Repository.resolveHead;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -17,13 +17,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import components.ObjectStore;
-import entities.HeadInfo;
-import objects.Commit;
+import git.PusherServiceGrpc;
+import git.components.ObjectStore;
+import git.entities.HeadInfo;
+import git.objects.Commit;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.ManagedChannel;
 
 public class RemoteCommands {
    private static final String ADD = "add";
    private static final String REPLACE = "replace";
+   private static PusherServiceGrpc.PusherServiceStub pushStub;
 
    public static void pull() {
 
@@ -51,7 +56,11 @@ public class RemoteCommands {
       pusher(url.get(), head.commit().get());
    }
 
+   // Given a valid URL and the commit we want to push, we would remotely add the
+   // commit to save it to some database
    public static void pusher(String url, Commit commit) {
+      ManagedChannel serverChannel = Grpc.newChannelBuilder(url, InsecureChannelCredentials.create()).build();
+      pushStub = PusherServiceGrpc.newStub(serverChannel);
 
    }
 
@@ -255,7 +264,7 @@ public class RemoteCommands {
             }
          }
       } else {
-         throw EXIT_FAILURE("jit remote only supports 'replace', 'add");
+         throw EXIT_FAILURE("jit remote only supports 'replace', 'add'");
       }
    }
 }
