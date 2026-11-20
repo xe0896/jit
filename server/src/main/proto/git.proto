@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "git";
+option java_outer_classname = "GitProto";
+option objc_class_prefix = "RTG";
+
+package git;
+
+service PusherService {
+    rpc Pusher(stream PushChunk) returns (PushResponse) {}
+    rpc CurrentCommit(HeadRequest) returns (HeadResponse) {}
+}
+
+message HeadRequest {
+    string branch = 1;
+}
+
+message HeadResponse {
+    string commitHash = 1;
+}
+
+message PushChunk {
+    bytes data = 1;
+}
+
+message PushResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message Author {
+    string name = 1;
+    string email = 2;
+    int64 time = 3;
+}
+
+message Committer {
+    string name = 1;
+    string email = 2;
+    int64 time = 3;
+}
