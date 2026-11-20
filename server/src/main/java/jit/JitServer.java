@@ -1,4 +1,4 @@
-package git;
+package jit;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -16,12 +16,18 @@ import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import git.HeadRequest;
+import git.HeadResponse;
+import git.PushChunk;
+import git.PushResponse;
+import git.PusherServiceGrpc;
+
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.stub.StreamObserver;
 
-public class GitServer {
+public class JitServer {
    private static final ObjectMapper mapper = new ObjectMapper();
 
    private static Server server;
@@ -56,7 +62,7 @@ public class GitServer {
    }
 
    public static void initialise(Connection conn) throws Exception {
-      try (InputStream in = GitServer.class
+      try (InputStream in = JitServer.class
             .getResourceAsStream("/schema.sql")) {
 
          if (in == null) {

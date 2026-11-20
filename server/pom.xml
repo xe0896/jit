@@ -10,7 +10,7 @@
     <version>0.1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>git-platform</artifactId>
+  <artifactId>jit-platform</artifactId>
   <packaging>jar</packaging>
 
   <dependencies>
@@ -39,7 +39,7 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <configuration>
-          <mainClass>git.GitServer</mainClass>
+          <mainClass>jit.JitServer</mainClass>
         </configuration>
       </plugin>
     </plugins>

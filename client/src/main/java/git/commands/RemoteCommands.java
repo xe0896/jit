@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import git.HeadRequest;
+import git.HeadResponse;
 import git.PusherServiceGrpc;
 import git.components.ObjectStore;
 import git.entities.HeadInfo;
@@ -24,6 +26,7 @@ import git.objects.Commit;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+import io.grpc.stub.StreamObserver;
 
 public class RemoteCommands {
    private static final String ADD = "add";
@@ -53,15 +56,46 @@ public class RemoteCommands {
       if (head.commit().isEmpty())
          throw EXIT_FAILURE("Commit does not exist");
 
-      pusher(url.get(), head.commit().get());
+      // Assumes that the HEAD is not detatched
+      pusher(url.get(), head.branch().get(), head.commit().get());
    }
 
    // Given a valid URL and the commit we want to push, we would remotely add the
    // commit to save it to some database
-   public static void pusher(String url, Commit commit) {
+   public static void pusher(String url, String branch, Commit commit) {
       ManagedChannel serverChannel = Grpc.newChannelBuilder(url, InsecureChannelCredentials.create()).build();
       pushStub = PusherServiceGrpc.newStub(serverChannel);
+      HeadRequest headRequest = HeadRequest.newBuilder().setBranch(branch).build();
 
+      // Stub used is asynchronous, this request is unary so no async but still have
+      // to follow the structure of it being async, onNext gives us what we need
+      // instantly
+      pushStub.currentCommit(headRequest, new StreamObserver<HeadResponse>() {
+         private static String commitHash;
+
+         @Override
+         public void onNext(HeadResponse response) {
+            commitHash = response.getCommitHash();
+            if (commitHash.isBlank()) {
+               // Has no commit hash for this branch, the next step is to
+               // send the full history of the commit hash
+            } else {
+               // Compare with the current and see if it needs an updated one
+               // with all the commit hash range between old and current
+
+            }
+         }
+
+         @Override
+         public void onError(Throwable t) {
+            t.printStackTrace();
+         }
+
+         @Override
+         public void onCompleted() {
+            System.out.println("Received the commit hash: " + commitHash);
+         }
+      });
    }
 
    public static void push(String[] args) throws IOException {
